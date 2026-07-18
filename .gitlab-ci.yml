@@ -15,7 +15,8 @@ stages:
 
 default:
   tags: [homelab]
-
+  before_script:
+    - source /root/.venv/ansible/bin/activate
 variables:
   ANSIBLE_FORCE_COLOR: "1"
   PY_COLORS: "1"
