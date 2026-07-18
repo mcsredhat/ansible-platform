@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    vault_mysqld_exporter_pw: "molecule-test-pw"
+  roles:
+    - mysqld_exporter

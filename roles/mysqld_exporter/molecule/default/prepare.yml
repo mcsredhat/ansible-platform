@@ -1,0 +1,16 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  vars:
+    vault_mysqld_exporter_pw: "molecule-test-pw"
+  tasks:
+    - name: Install mariadb-server so the exporter DB-account task can run
+      ansible.builtin.dnf:
+        name: [mariadb-server, python3-PyMySQL]
+        state: present
+    - name: Start mariadb (systemd container)
+      ansible.builtin.systemd:
+        name: mariadb
+        state: started
+        enabled: true

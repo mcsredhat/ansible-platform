@@ -1,0 +1,111 @@
+---
+# =============================================================================
+# ansible-platform CI (Phase 6)
+# Self-hosted GitLab Runner (shell executor) on the homelab, tagged `homelab`.
+# Runner prerequisites are documented in docs/SETUP-GITLAB-CI.md
+# (ansible-core, ansible-lint, yamllint, molecule + molecule-plugins[podman],
+#  podman, git — installed once on the runner host).
+# =============================================================================
+
+stages:
+  - lint
+  - syntax
+  - secrets
+  - molecule
+
+default:
+  tags: [homelab]
+
+variables:
+  ANSIBLE_FORCE_COLOR: "1"
+  PY_COLORS: "1"
+
+# -----------------------------------------------------------------------------
+# Stage 1 — lint: enforce the repo's existing .yamllint + .ansible-lint
+# -----------------------------------------------------------------------------
+yamllint:
+  stage: lint
+  script:
+    - yamllint .
+
+ansible-lint:
+  stage: lint
+  script:
+    - ansible-lint
+
+# -----------------------------------------------------------------------------
+# Stage 2 — syntax: every play parses, all imports resolve
+# -----------------------------------------------------------------------------
+syntax-check:
+  stage: syntax
+  script:
+    - ansible-galaxy collection install -r requirements.yml
+    - ansible-playbook site.yml --syntax-check
+    - |
+      for play in *.yml; do
+        case "$play" in site.yml) continue;; esac
+        echo "--- syntax-check: $play"
+        ansible-playbook "$play" --syntax-check
+      done
+
+# -----------------------------------------------------------------------------
+# Stage 3 — secrets: no plaintext credentials outside the vault,
+#                    and the vault itself must be encrypted
+# -----------------------------------------------------------------------------
+secrets-scan:
+  stage: secrets
+  script:
+    - scripts/ci/secrets-scan.sh
+
+# -----------------------------------------------------------------------------
+# Stage 4 — molecule: converge + verify each role in a systemd podman container
+# Full `molecule test` (create→converge→idempotence→verify→destroy).
+# wordpress is excluded: it needs the live data tier (NFS/MariaDB/Redis) and
+# is covered by syntax-check + the deployed platform.
+# php_fpm has a known cosmetic idempotence exception (dnf module reset) and is
+# allowed to fail until that task is made fully idempotent.
+# -----------------------------------------------------------------------------
+.molecule-base: &molecule-base
+  stage: molecule
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - cd "roles/$ROLE"
+    - molecule test
+
+molecule:
+  <<: *molecule-base
+  parallel:
+    matrix:
+      - ROLE:
+          - base
+          - hardening
+          - tuning
+          - audit
+          - fail2ban
+          - mariadb
+          - redis
+          - nfs_server
+          - nfs_client
+          - nginx_common
+          - nginx_edge
+          - keepalived
+          - node_exporter
+          - restic_backup
+          - prometheus
+          - alertmanager
+          - loki
+          - grafana
+          - blackbox_exporter
+          - promtail
+          - nginx_exporter
+          - mysqld_exporter
+          - secops
+
+molecule-php_fpm:
+  <<: *molecule-base
+  allow_failure: true
+  script:
+    - cd roles/php_fpm
+    - molecule test

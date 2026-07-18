@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    vault_grafana_admin_pw: "molecule-test-pw"
+  roles:
+    - grafana

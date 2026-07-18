@@ -1,0 +1,19 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Blackbox binary installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/blackbox_exporter
+      register: bb
+    - name: Assert binary present
+      ansible.builtin.assert:
+        that: bb.stat.exists and bb.stat.executable
+    - name: Config present
+      ansible.builtin.stat:
+        path: /etc/blackbox_exporter/blackbox.yml
+      register: bbc
+    - name: Assert config present
+      ansible.builtin.assert:
+        that: bbc.stat.exists

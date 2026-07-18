@@ -1,0 +1,19 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Prometheus binary installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/prometheus
+      register: p
+    - name: Assert binary present
+      ansible.builtin.assert:
+        that: p.stat.exists and p.stat.executable
+    - name: Rules deployed
+      ansible.builtin.stat:
+        path: /etc/prometheus/rules
+      register: pr
+    - name: Assert rules dir present
+      ansible.builtin.assert:
+        that: pr.stat.isdir is defined and pr.stat.isdir

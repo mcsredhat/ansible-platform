@@ -1,0 +1,19 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Exporter binary installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/nginx-prometheus-exporter
+      register: ne
+    - name: Assert binary present
+      ansible.builtin.assert:
+        that: ne.stat.exists and ne.stat.executable
+    - name: stub_status snippet deployed
+      ansible.builtin.stat:
+        path: /etc/nginx/conf.d/stub_status.conf
+      register: ss
+    - name: Assert snippet present
+      ansible.builtin.assert:
+        that: ss.stat.exists

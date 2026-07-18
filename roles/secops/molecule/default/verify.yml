@@ -1,0 +1,19 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: fail2ban metrics script installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/fail2ban-metrics.sh
+      register: f2b
+    - name: Assert script present
+      ansible.builtin.assert:
+        that: f2b.stat.exists and f2b.stat.executable
+    - name: AIDE metrics script installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/aide-metrics.sh
+      register: am
+    - name: Assert AIDE script present
+      ansible.builtin.assert:
+        that: am.stat.exists and am.stat.executable

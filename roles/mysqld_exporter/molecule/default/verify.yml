@@ -1,0 +1,12 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Exporter binary installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/mysqld_exporter
+      register: me
+    - name: Assert binary present
+      ansible.builtin.assert:
+        that: me.stat.exists and me.stat.executable

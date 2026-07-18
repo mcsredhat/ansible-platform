@@ -1,0 +1,9 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    - name: Install nginx so /etc/nginx/conf.d exists and reload handler works
+      ansible.builtin.dnf:
+        name: nginx
+        state: present

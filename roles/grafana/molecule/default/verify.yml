@@ -1,0 +1,22 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Grafana package installed
+      ansible.builtin.command: rpm -q grafana
+      changed_when: false
+    - name: Datasource provisioning present
+      ansible.builtin.stat:
+        path: /etc/grafana/provisioning/datasources/platform.yml
+      register: gd
+    - name: Assert datasources present
+      ansible.builtin.assert:
+        that: gd.stat.exists
+    - name: Dashboards deployed
+      ansible.builtin.stat:
+        path: /var/lib/grafana/dashboards/platform-overview.json
+      register: gdash
+    - name: Assert dashboards present
+      ansible.builtin.assert:
+        that: gdash.stat.exists

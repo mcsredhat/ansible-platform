@@ -1,0 +1,19 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Promtail binary installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/promtail
+      register: pt
+    - name: Assert binary present
+      ansible.builtin.assert:
+        that: pt.stat.exists and pt.stat.executable
+    - name: Config present
+      ansible.builtin.stat:
+        path: /etc/promtail/promtail-config.yml
+      register: ptc
+    - name: Assert config present
+      ansible.builtin.assert:
+        that: ptc.stat.exists

@@ -1,0 +1,19 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Alertmanager binary installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/alertmanager
+      register: am
+    - name: Assert binary present
+      ansible.builtin.assert:
+        that: am.stat.exists and am.stat.executable
+    - name: Config present
+      ansible.builtin.stat:
+        path: /etc/alertmanager/alertmanager.yml
+      register: amc
+    - name: Assert config present
+      ansible.builtin.assert:
+        that: amc.stat.exists

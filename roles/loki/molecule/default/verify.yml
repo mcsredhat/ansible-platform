@@ -1,0 +1,19 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Loki binary installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/loki
+      register: l
+    - name: Assert binary present
+      ansible.builtin.assert:
+        that: l.stat.exists and l.stat.executable
+    - name: Ruler rules deployed
+      ansible.builtin.stat:
+        path: /var/lib/loki/rules/fake/log-alerts.yml
+      register: lr
+    - name: Assert rules present
+      ansible.builtin.assert:
+        that: lr.stat.exists
