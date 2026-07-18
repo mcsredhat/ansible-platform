@@ -2,11 +2,7 @@
 # =============================================================================
 # ansible-platform CI (Phase 6)
 # Self-hosted GitLab Runner (shell executor) on the homelab, tagged `homelab`.
-# Runner prerequisites are documented in docs/SETUP-GITLAB-CI.md
-# (ansible-core, ansible-lint, yamllint, molecule + molecule-plugins[podman],
-#  podman, git — installed once on the runner host).
 # =============================================================================
-
 stages:
   - lint
   - syntax
@@ -17,15 +13,13 @@ default:
   tags: [homelab]
   before_script:
     - source /root/.venv/ansible/bin/activate
-    - echo "ci-dummy-not-the-real-password" > .vault-pass
+    - echo "$ANSIBLE_VAULT_PASSWORD" > .vault-pass
     - chmod 600 .vault-pass
+
 variables:
   ANSIBLE_FORCE_COLOR: "1"
   PY_COLORS: "1"
 
-# -----------------------------------------------------------------------------
-# Stage 1 — lint: enforce the repo's existing .yamllint + .ansible-lint
-# -----------------------------------------------------------------------------
 yamllint:
   stage: lint
   script:
@@ -36,9 +30,6 @@ ansible-lint:
   script:
     - ansible-lint
 
-# -----------------------------------------------------------------------------
-# Stage 2 — syntax: every play parses, all imports resolve
-# -----------------------------------------------------------------------------
 syntax-check:
   stage: syntax
   script:
@@ -46,28 +37,16 @@ syntax-check:
     - ansible-playbook site.yml --syntax-check
     - |
       for play in *.yml; do
-        case "$play" in site.yml) continue;; esac
+        case "$play" in site.yml|requirements.yml) continue;; esac
         echo "--- syntax-check: $play"
         ansible-playbook "$play" --syntax-check
       done
 
-# -----------------------------------------------------------------------------
-# Stage 3 — secrets: no plaintext credentials outside the vault,
-#                    and the vault itself must be encrypted
-# -----------------------------------------------------------------------------
 secrets-scan:
   stage: secrets
   script:
     - scripts/ci/secrets-scan.sh
 
-# -----------------------------------------------------------------------------
-# Stage 4 — molecule: converge + verify each role in a systemd podman container
-# Full `molecule test` (create→converge→idempotence→verify→destroy).
-# wordpress is excluded: it needs the live data tier (NFS/MariaDB/Redis) and
-# is covered by syntax-check + the deployed platform.
-# php_fpm has a known cosmetic idempotence exception (dnf module reset) and is
-# allowed to fail until that task is made fully idempotent.
-# -----------------------------------------------------------------------------
 .molecule-base: &molecule-base
   stage: molecule
   rules:
