@@ -17,6 +17,8 @@ default:
   tags: [homelab]
   before_script:
     - source /root/.venv/ansible/bin/activate
+    - echo "ci-dummy-not-the-real-password" > .vault-pass
+    - chmod 600 .vault-pass
 variables:
   ANSIBLE_FORCE_COLOR: "1"
   PY_COLORS: "1"
