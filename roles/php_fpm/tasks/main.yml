@@ -14,7 +14,7 @@
   changed_when: "'Nothing to do' not in php_reset.stdout"
   tags: [php, module]
 
-- name: Enable the PHP {{ php_stream }} stream
+- name: Enable the PHP DNF module stream {{ php_stream }}
   ansible.builtin.command: "dnf -y module enable php:{{ php_stream }}"
   register: php_enable
   changed_when: "'Nothing to do' not in php_enable.stdout"

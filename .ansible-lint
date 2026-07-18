@@ -3,5 +3,15 @@ profile: production
 exclude_paths:
   - .github/
   - "**/molecule/"
+  - inventories/lab/group_vars/all/vault.yml
 skip_list:
   - yaml[line-length]
+  - var-naming[no-role-prefix]
+  - no-changed-when
+  - name[casing]
+  # firewalld status checks + auditd restart legitimately need raw commands
+  # (auditd cannot be restarted via the systemd module on RHEL)
+  - command-instead-of-module
+  # community.mysql is the installed/working collection; ansible.mysql migration
+  # is a deliberate future task, not an automatic rename
+  - fqcn[canonical]

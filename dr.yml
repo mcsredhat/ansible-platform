@@ -32,7 +32,8 @@
       ansible.builtin.command: "find {{ restore_staging }} -maxdepth 4 -type f"
       changed_when: false
       register: restored
-    - ansible.builtin.debug:
+    - name: Show restore verification output
+      ansible.builtin.debug:
         var: restored.stdout_lines
 
     - name: Re-import the database (LIVE — destructive)

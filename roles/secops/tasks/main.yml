@@ -107,7 +107,7 @@
 
 - name: Resolve the audisp-syslog path
   ansible.builtin.set_fact:
-    secops_audisp_path: "{{ (secops_audisp_paths.results | selectattr('stat.exists','defined') | selectattr('stat.exists') | map(attribute='stat.path') | list | first) | default('') }}"
+    secops_audisp_path: "{{ (secops_audisp_paths.results | selectattr('stat.exists', 'defined') | selectattr('stat.exists') | map(attribute='stat.path') | list | first) | default('') }}"
   when: secops_audit_to_journald | bool
   tags: [secops, audit]
 
