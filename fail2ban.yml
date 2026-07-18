@@ -1,0 +1,7 @@
+---
+# Security — network-layer banning across all nodes (jails scale per tier).
+- name: Configure fail2ban
+  hosts: all
+  become: true
+  roles:
+    - fail2ban

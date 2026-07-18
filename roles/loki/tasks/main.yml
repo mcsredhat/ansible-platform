@@ -1,0 +1,116 @@
+---
+# loki — pinned binary + systemd, single-node filesystem storage, 7d retention
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    loki_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Create the loki system user
+  ansible.builtin.user:
+    name: "{{ loki_user }}"
+    system: true
+    shell: /sbin/nologin
+    home: "{{ loki_data_dir }}"
+    create_home: false
+  tags: [loki, user]
+
+- name: Create loki directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ loki_user }}"
+    group: "{{ loki_user }}"
+    mode: "0755"
+  loop:
+    - "{{ loki_config_dir }}"
+    - "{{ loki_data_dir }}"
+    - "{{ loki_data_dir }}/chunks"
+    - "{{ loki_data_dir }}/rules"
+    - "{{ loki_data_dir }}/rules/fake"
+    - "{{ loki_data_dir }}/rules-temp"
+    - "{{ loki_data_dir }}/compactor"
+  tags: [loki, config]
+
+- name: Deploy LogQL alerting rules (ruler, tenant 'fake')
+  ansible.builtin.copy:
+    src: rules/log-alerts.yml
+    dest: "{{ loki_data_dir }}/rules/fake/log-alerts.yml"
+    owner: "{{ loki_user }}"
+    group: "{{ loki_user }}"
+    mode: "0644"
+  notify: restart loki
+  tags: [loki, rules]
+
+- name: Ensure unzip is present (loki ships as a .zip)
+  ansible.builtin.dnf:
+    name: unzip
+    state: present
+  tags: [loki, install]
+
+- name: Download and extract loki
+  ansible.builtin.unarchive:
+    src: "{{ loki_download_url }}"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/loki-{{ loki_arch }}"
+  tags: [loki, install]
+
+- name: Install the loki binary
+  ansible.builtin.copy:
+    src: "/tmp/loki-{{ loki_arch }}"
+    dest: /usr/local/bin/loki
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  notify: restart loki
+  tags: [loki, install]
+
+- name: Deploy the loki configuration
+  ansible.builtin.template:
+    src: loki-config.yml.j2
+    dest: "{{ loki_config_dir }}/loki-config.yml"
+    owner: "{{ loki_user }}"
+    group: "{{ loki_user }}"
+    mode: "0644"
+  notify: restart loki
+  tags: [loki, config]
+
+- name: Deploy the loki systemd unit
+  ansible.builtin.template:
+    src: loki.service.j2
+    dest: /etc/systemd/system/loki.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart loki
+  tags: [loki, service]
+
+- name: Enable and start loki
+  ansible.builtin.systemd:
+    name: loki
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: not loki_in_container
+  tags: [loki, service]
+
+- name: Is firewalld running?
+  ansible.builtin.command: systemctl is-active firewalld
+  register: loki_firewalld
+  changed_when: false
+  failed_when: false
+  tags: [loki, firewall]
+
+- name: Allow promtail agents (platform subnet) to reach loki
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ loki_allowed_source }} port port={{ loki_port }} protocol=tcp accept"
+    permanent: true
+    immediate: "{{ loki_firewalld.stdout == 'active' }}"
+    state: enabled
+  when: not loki_in_container
+  tags: [loki, firewall]

@@ -1,0 +1,7 @@
+---
+# Phase 5 — central metrics server + alert rules on obs1.
+- name: Provision Prometheus
+  hosts: obs
+  become: true
+  roles:
+    - prometheus

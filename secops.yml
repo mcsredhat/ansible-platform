@@ -1,0 +1,7 @@
+---
+# Phase 5d — activate detective controls into metrics + logs, fleet-wide.
+- name: Provision SecOps signals
+  hosts: all
+  become: true
+  roles:
+    - secops

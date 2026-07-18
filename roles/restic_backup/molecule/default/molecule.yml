@@ -1,0 +1,26 @@
+---
+role_name_check: 1
+dependency:
+  name: galaxy
+  options:
+    requirements-file: ../../../../requirements.yml
+driver:
+  name: podman
+platforms:
+  - name: restic-el9
+    image: quay.io/rockylinux/rockylinux:9
+    command: /usr/sbin/init
+    systemd: always
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        restic_password: "molecule_test_pw"
+        restic_repository: "/srv/restic-repo"
+verifier:
+  name: ansible

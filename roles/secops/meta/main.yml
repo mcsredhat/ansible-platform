@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: secops
+  author: mcsredhat
+  description: Turns auditd/AIDE/fail2ban detective controls into metrics + logs for alerting
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: ["9"]
+  galaxy_tags: [rhel, security, secops, monitoring, observability]
+dependencies: []

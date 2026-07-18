@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+# Forward audit events to syslog (captured by journald, shipped by promtail).
+active = yes
+direction = out
+path = {{ secops_audisp_path }}
+type = always
+args = LOG_LOCAL6
+format = string

@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Prometheus mysqld_exporter
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ mysqld_exporter_user }}
+Group={{ mysqld_exporter_user }}
+Environment=MYSQLD_EXPORTER_CONFIG=/etc/.mysqld_exporter.cnf
+ExecStart=/usr/local/bin/mysqld_exporter \
+  --web.listen-address=:{{ mysqld_exporter_port }} \
+  --config.my-cnf=/etc/.mysqld_exporter.cnf
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

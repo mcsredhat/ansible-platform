@@ -1,0 +1,5 @@
+---
+ansible_host: 192.168.1.11
+node_ip: "192.168.1.11"
+keepalived_state: "MASTER"
+keepalived_priority: 150

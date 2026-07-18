@@ -1,0 +1,23 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: backup script present + executable
+      ansible.builtin.stat:
+        path: /usr/local/bin/restic-backup.sh
+      register: scr
+    - ansible.builtin.assert:
+        that:
+          - scr.stat.exists
+          - scr.stat.mode == '0750'
+
+    - name: repo initialised (config object exists)
+      ansible.builtin.command: restic -r /srv/restic-repo cat config
+      environment:
+        RESTIC_PASSWORD_FILE: /etc/restic/repo.pass
+      changed_when: false
+
+    - name: timer unit installed
+      ansible.builtin.command: systemctl cat restic-backup.timer
+      changed_when: false

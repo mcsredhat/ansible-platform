@@ -1,0 +1,23 @@
+---
+# restic_backup role — off-host 3-2-1 backups (00-architecture §3.4)
+# Backs up the WordPress DB dump + the shared uploads tree, with retention,
+# a Prometheus success metric, and a vaulted repo key.
+
+# IMPORTANT: a local path is NOT 3-2-1. Override this to off-host storage —
+#   sftp:backup@192.168.1.5:/srv/restic   (control node / NAS over SSH)
+#   s3:http://minio.lab:9000/restic        (object storage)
+# The default below lets you validate the mechanics locally first.
+restic_repository: "/srv/restic-repo"
+
+restic_password: "{{ vault_restic_pw }}"
+restic_password_file: /etc/restic/repo.pass
+
+restic_db_name: wordpress
+restic_db_dump_dir: /var/backups/wordpress
+restic_paths:
+  - /var/backups/wordpress
+  - /srv/wordpress/uploads
+
+restic_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 6"
+restic_oncalendar: "*-*-* 02:30:00"          # nightly 02:30 + jitter
+restic_textfile_dir: /var/lib/node_exporter/textfile_collector

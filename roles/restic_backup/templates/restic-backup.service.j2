@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Platform restic backup (DB dump + uploads)
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/restic-backup.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

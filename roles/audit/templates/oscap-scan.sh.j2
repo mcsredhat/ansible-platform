@@ -1,0 +1,10 @@
+#!/bin/bash
+# Managed by Ansible (audit role)
+set -uo pipefail
+TS=$(date +%F)
+REPORT="{{ audit_openscap_report_dir }}/oscap-${TS}.html"
+oscap xccdf eval \
+  --profile {{ audit_openscap_profile }} \
+  --report "$REPORT" \
+  {{ audit_openscap_datastream }} || true   # non-zero only means some rules failed
+echo "OpenSCAP report written to $REPORT"

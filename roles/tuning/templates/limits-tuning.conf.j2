@@ -1,0 +1,7 @@
+# Managed by Ansible (tuning role)
+*     soft    nofile    {{ tuning_nofile_soft }}
+*     hard    nofile    {{ tuning_nofile_hard }}
+*     soft    nproc     {{ tuning_nproc_soft }}
+*     hard    nproc     {{ tuning_nproc_hard }}
+root  soft    nofile    {{ tuning_nofile_soft }}
+root  hard    nofile    {{ tuning_nofile_hard }}

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+set -uo pipefail
+export RESTIC_REPOSITORY="{{ restic_repository }}"
+export RESTIC_PASSWORD_FILE="{{ restic_password_file }}"
+
+PROM="{{ restic_textfile_dir }}/restic_backup.prom"
+START=$(date +%s)
+rc=0
+
+# 1. Dump the database (root via unix socket — no password needed)
+mkdir -p "{{ restic_db_dump_dir }}"
+if ! mysqldump --single-transaction --routines --triggers "{{ restic_db_name }}" \
+      | gzip > "{{ restic_db_dump_dir }}/{{ restic_db_name }}.sql.gz"; then
+  echo "ERROR: mysqldump failed" >&2
+  rc=1
+fi
+
+# 2. Back up the dump + the uploads tree
+if [ "$rc" -eq 0 ]; then
+  restic backup {{ restic_paths | join(' ') }} --tag platform || rc=1
+fi
+
+# 3. Apply retention
+if [ "$rc" -eq 0 ]; then
+  restic forget {{ restic_retention }} --prune || rc=1
+fi
+
+END=$(date +%s)
+
+# 4. Emit Prometheus metrics atomically for the node_exporter textfile collector
+cat > "${PROM}.tmp" <<METRICS
+# HELP restic_backup_success Whether the last restic backup succeeded (1) or failed (0)
+# TYPE restic_backup_success gauge
+restic_backup_success $([ "$rc" -eq 0 ] && echo 1 || echo 0)
+# HELP restic_backup_duration_seconds Duration of the last restic backup run
+# TYPE restic_backup_duration_seconds gauge
+restic_backup_duration_seconds $((END - START))
+# HELP restic_backup_timestamp_seconds Completion time of the last restic backup
+# TYPE restic_backup_timestamp_seconds gauge
+restic_backup_timestamp_seconds ${END}
+METRICS
+mv "${PROM}.tmp" "${PROM}"
+
+exit "$rc"

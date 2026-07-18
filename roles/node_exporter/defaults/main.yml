@@ -1,0 +1,16 @@
+---
+# node_exporter — host metrics on every node (00-architecture §5, Phase 5)
+# Pinned version for reproducibility; bump deliberately.
+node_exporter_version: "1.8.2"
+node_exporter_arch: "linux-amd64"
+node_exporter_user: node_exporter
+node_exporter_port: 9100
+
+# Where restic (and others) drop *.prom files for the textfile collector.
+node_exporter_textfile_dir: /var/lib/node_exporter/textfile_collector
+
+# Only obs1 (Prometheus) may scrape the exporter.
+node_exporter_scraper_ip: "192.168.1.41"
+
+node_exporter_download_url: >-
+  https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}.tar.gz

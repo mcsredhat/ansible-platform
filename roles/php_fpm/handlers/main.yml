@@ -1,0 +1,6 @@
+---
+- name: restart php-fpm
+  ansible.builtin.service:
+    name: php-fpm
+    state: restarted
+  when: not (php_in_container | default(false))

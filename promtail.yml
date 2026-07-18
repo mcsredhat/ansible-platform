@@ -1,0 +1,7 @@
+---
+# Phase 5 — ship logs from every node to loki on obs1.
+- name: Provision promtail
+  hosts: all
+  become: true
+  roles:
+    - promtail

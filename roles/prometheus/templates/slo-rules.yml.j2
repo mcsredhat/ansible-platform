@@ -1,0 +1,51 @@
+# {{ ansible_managed }}
+# Phase 5b — SLO recording + burn-rate alerts.
+#
+# SLI: platform availability = fraction of edge nginx instances that are up.
+# SLO target: 99.5% availability. Error budget = 0.5%.
+# (In 5c this SLI is upgraded to a real blackbox HTTPS probe of the VIP; the
+#  recording-rule name stays the same so dashboards/alerts don't change.)
+
+groups:
+  - name: slo-recording
+    interval: 30s
+    rules:
+      # Instantaneous SLI: are the edge nginx exporters reporting up?
+      - record: platform:edge_up:ratio
+        expr: >
+          avg(probe_success{job="blackbox_vip"})
+
+      # Rolling availability over multiple windows (for burn-rate math).
+      - record: platform:availability:ratio_rate5m
+        expr: avg_over_time(platform:edge_up:ratio[5m])
+      - record: platform:availability:ratio_rate1h
+        expr: avg_over_time(platform:edge_up:ratio[1h])
+      - record: platform:availability:ratio_rate6h
+        expr: avg_over_time(platform:edge_up:ratio[6h])
+
+  - name: slo-burn-rate
+    rules:
+      # Fast burn: 5m AND 1h windows both burning >14.4x budget → page.
+      # (14.4x over 1h consumes ~2% of a 30-day budget — classic Google SRE.)
+      - alert: SLOErrorBudgetFastBurn
+        expr: >
+          (1 - platform:availability:ratio_rate5m) > (14.4 * 0.005)
+          and
+          (1 - platform:availability:ratio_rate1h) > (14.4 * 0.005)
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Platform SLO fast burn — availability budget draining"
+          description: "Edge availability is burning the 99.5% error budget >14.4x over 5m and 1h."
+
+      # Slow burn: 6h window burning >6x budget → warning.
+      - alert: SLOErrorBudgetSlowBurn
+        expr: >
+          (1 - platform:availability:ratio_rate6h) > (6 * 0.005)
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Platform SLO slow burn"
+          description: "Edge availability is burning the 99.5% error budget >6x over 6h."

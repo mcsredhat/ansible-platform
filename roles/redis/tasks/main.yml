@@ -1,0 +1,84 @@
+---
+# redis — shared object cache, secured (00-architecture §3.2)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    redis_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Install Redis
+  ansible.builtin.dnf:
+    name: redis
+    state: present
+  tags: [redis, packages]
+
+# --- secure configuration (edit distro config, preserving its paths) ------
+- name: Bind to loopback + the node IP only
+  ansible.builtin.lineinfile:
+    path: "{{ redis_conf }}"
+    regexp: '^bind '
+    line: "bind {{ redis_bind }}"
+  notify: restart redis
+  tags: [redis, config]
+
+- name: Enable protected-mode
+  ansible.builtin.lineinfile:
+    path: "{{ redis_conf }}"
+    regexp: '^protected-mode '
+    line: "protected-mode {{ redis_protected_mode }}"
+  notify: restart redis
+  tags: [redis, config]
+
+- name: Set the auth password
+  ansible.builtin.lineinfile:
+    path: "{{ redis_conf }}"
+    regexp: '^#?\s*requirepass '
+    line: "requirepass {{ redis_password }}"
+  no_log: true
+  notify: restart redis
+  tags: [redis, config]
+
+- name: Set maxmemory
+  ansible.builtin.lineinfile:
+    path: "{{ redis_conf }}"
+    regexp: '^#?\s*maxmemory '
+    line: "maxmemory {{ redis_maxmemory }}"
+  notify: restart redis
+  tags: [redis, config]
+
+- name: Set the eviction policy
+  ansible.builtin.lineinfile:
+    path: "{{ redis_conf }}"
+    regexp: '^#?\s*maxmemory-policy '
+    line: "maxmemory-policy {{ redis_maxmemory_policy }}"
+  notify: restart redis
+  tags: [redis, config]
+
+- name: Disable dangerous commands
+  ansible.builtin.blockinfile:
+    path: "{{ redis_conf }}"
+    marker: "# {mark} ANSIBLE REDIS HARDENING"
+    block: |
+      rename-command FLUSHALL ""
+  when: redis_rename_dangerous | bool
+  notify: restart redis
+  tags: [redis, config]
+
+- name: Enable and start Redis
+  ansible.builtin.service:
+    name: redis
+    state: started
+    enabled: true
+  when: not redis_in_container
+  tags: [redis, service]
+
+# --- firewall (6379 default port is redis_port_t under SELinux — nothing to relabel) ---
+- name: Allow Redis from the platform subnet only
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ redis_allowed_subnet }} port port={{ redis_port }} protocol=tcp accept"
+    permanent: true
+    immediate: true
+    state: enabled
+  when: not redis_in_container
+  tags: [redis, firewall]

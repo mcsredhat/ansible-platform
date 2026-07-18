@@ -1,0 +1,15 @@
+---
+# loki — log aggregation on obs1 (Phase 5)
+loki_version: "3.1.1"
+loki_arch: "linux-amd64"
+loki_user: loki
+loki_port: 3100
+
+loki_config_dir: /etc/loki
+loki_data_dir: /var/lib/loki
+loki_retention: "168h"   # 7 days
+
+loki_allowed_source: "192.168.1.0/24"
+
+loki_download_url: >-
+  https://github.com/grafana/loki/releases/download/v{{ loki_version }}/loki-{{ loki_arch }}.zip

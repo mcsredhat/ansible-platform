@@ -1,0 +1,7 @@
+*.retry
+.vault-pass
+inventories/*/group_vars/all/vault.yml
+__pycache__/
+*.pyc
+.molecule/
+*.tar.gz

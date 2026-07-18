@@ -1,0 +1,57 @@
+# {{ ansible_managed }}
+# Phase 5b: severity-based routing. Critical alerts notify immediately with
+# fast repeat; warnings are grouped into a slower digest. Email delivery is
+# wired but disabled until Phase 7 (mail1) — flip alertmanager_email_enabled.
+
+route:
+  group_by: ['alertname', 'instance']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: default
+  routes:
+    # Critical: page fast, repeat often.
+    - matchers:
+        - severity="critical"
+      receiver: critical
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 1h
+      continue: false
+    # Warning: digest, slow repeat.
+    - matchers:
+        - severity="warning"
+      receiver: warning
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 12h
+      continue: false
+
+receivers:
+  - name: default
+  - name: critical
+{% if alertmanager_email_enabled %}
+    email_configs:
+      - to: "{{ alertmanager_email_to }}"
+        from: "{{ alertmanager_smtp_from }}"
+        smarthost: "{{ alertmanager_smtp_host }}"
+        require_tls: false
+        headers:
+          Subject: '[CRITICAL] {{ '{{' }} .CommonLabels.alertname {{ '}}' }}'
+{% endif %}
+  - name: warning
+{% if alertmanager_email_enabled %}
+    email_configs:
+      - to: "{{ alertmanager_email_to }}"
+        from: "{{ alertmanager_smtp_from }}"
+        smarthost: "{{ alertmanager_smtp_host }}"
+        require_tls: false
+        headers:
+          Subject: '[warning] {{ '{{' }} .CommonLabels.alertname {{ '}}' }}'
+{% endif %}
+
+# Critical silences its own warning-level duplicates for the same alert/instance.
+inhibit_rules:
+  - source_matchers: ['severity="critical"']
+    target_matchers: ['severity="warning"']
+    equal: ['alertname', 'instance']

@@ -1,0 +1,19 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: export dir exists with setgid
+      ansible.builtin.stat:
+        path: /srv/wordpress/uploads
+      register: ex
+    - name: assert ownership + setgid
+      ansible.builtin.assert:
+        that:
+          - ex.stat.exists
+          - ex.stat.uid == 980
+          - ex.stat.gid == 980
+          - ex.stat.mode == '2775'
+    - name: export definition present
+      ansible.builtin.command: grep -q "/srv/wordpress/uploads" /etc/exports.d/wordpress.exports
+      changed_when: false

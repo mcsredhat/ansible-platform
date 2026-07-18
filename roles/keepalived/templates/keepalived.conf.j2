@@ -1,0 +1,42 @@
+# {{ ansible_managed }}
+global_defs {
+    enable_script_security
+    script_user root
+}
+
+vrrp_script chk_nginx {
+    script "/etc/keepalived/chk_nginx.sh"
+    interval 2
+    timeout 5
+    fall 2
+    rise 2
+    weight -60
+}
+
+vrrp_instance VI_APP {
+    state {{ keepalived_state }}
+    interface {{ ansible_facts['default_ipv4']['interface'] }}
+    virtual_router_id {{ keepalived_router_id }}
+    priority {{ keepalived_priority }}
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass {{ keepalived_auth_pass }}
+    }
+
+    unicast_src_ip {{ ansible_facts['default_ipv4']['address'] }}
+    unicast_peer {
+{% for ip in keepalived_peers if ip != ansible_facts['default_ipv4']['address'] %}
+        {{ ip }}
+{% endfor %}
+    }
+
+    virtual_ipaddress {
+        {{ keepalived_vip }}/{{ keepalived_vip_cidr }}
+    }
+
+    track_script {
+        chk_nginx
+    }
+}

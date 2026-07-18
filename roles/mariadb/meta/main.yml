@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: mariadb
+  author: mcsredhat
+  description: MariaDB data tier (network bind, hardening, WordPress DB, binlog/PITR) for RHEL 9
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - mariadb
+    - database
+dependencies: []

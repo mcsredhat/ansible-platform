@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: grafana
+  author: mcsredhat
+  description: Grafana (official RPM repo) with provisioned Prometheus + Loki datasources
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: ["9"]
+  galaxy_tags: [rhel, grafana, monitoring, observability]
+dependencies: []

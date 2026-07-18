@@ -1,0 +1,7 @@
+---
+# Phase 4 — shared uploads mount on the web tier.
+- name: Mount the shared WordPress uploads
+  hosts: web
+  become: true
+  roles:
+    - nfs_client

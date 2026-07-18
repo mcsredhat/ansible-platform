@@ -1,0 +1,24 @@
+---
+# nginx_edge role — TLS reverse proxy + load balancer (00-architecture §4.5)
+# Lives on edge1/edge2; keepalived floats the VIP across them next.
+edge_server_name: "app.platform.lab"
+edge_extra_names: "vip.platform.lab"
+
+edge_upstream_name: "app_backend"
+edge_backend_port: 8080
+edge_backends:
+  - web1
+  - web2
+edge_lb_method: "least_conn"
+edge_max_fails: 3
+edge_fail_timeout: "15s"
+
+# TLS — self-signed by default; set edge_tls_self_signed: false and point
+# edge_tls_cert/key at real files (or vault-deployed certs) to use your own.
+edge_tls_self_signed: true
+edge_tls_dir: /etc/pki/nginx
+edge_tls_keydir: /etc/pki/nginx/private
+edge_tls_cert: /etc/pki/nginx/app.platform.lab.crt
+edge_tls_key: /etc/pki/nginx/private/app.platform.lab.key
+edge_tls_days: 825
+edge_vip: "192.168.1.10"

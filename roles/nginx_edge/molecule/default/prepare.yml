@@ -1,0 +1,17 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    - name: nginx baseline present (snippets + binary)
+      ansible.builtin.dnf:
+        name: nginx
+        state: present
+    - name: minimal snippets so the vhost includes resolve
+      ansible.builtin.copy:
+        dest: "/etc/nginx/snippets/{{ item }}"
+        content: "# test stub\n"
+        mode: "0644"
+      loop:
+        - ssl-params.conf
+        - security-headers.conf

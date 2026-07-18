@@ -1,0 +1,89 @@
+---
+# tuning — host-level performance (00-architecture §4.3)
+
+- name: Detect container runtime (skip kernel-level tasks)
+  ansible.builtin.set_fact:
+    tuning_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+# --- tuned profile --------------------------------------------------------
+- name: Install tuned
+  ansible.builtin.dnf:
+    name: tuned
+    state: present
+  when: tuning_tuned | bool and not tuning_in_container
+  tags: [tuning, tuned]
+
+- name: Enable and start tuned
+  ansible.builtin.service:
+    name: tuned
+    state: started
+    enabled: true
+  when: tuning_tuned | bool and not tuning_in_container
+  tags: [tuning, tuned]
+
+- name: Get active tuned profile
+  ansible.builtin.command: tuned-adm active
+  register: tuning_active
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: tuning_tuned | bool and not tuning_in_container
+  tags: [tuning, tuned]
+
+- name: Set tuned profile
+  ansible.builtin.command: "tuned-adm profile {{ tuning_tuned_profile }}"
+  changed_when: true
+  when:
+    - tuning_tuned | bool
+    - not tuning_in_container
+    - tuning_tuned_profile not in (tuning_active.stdout | default(''))
+  tags: [tuning, tuned]
+
+# --- Transparent Huge Pages (oneshot service, idempotent) -----------------
+- name: Install THP-disable service
+  ansible.builtin.template:
+    src: disable-thp.service.j2
+    dest: /etc/systemd/system/disable-thp.service
+    owner: root
+    group: root
+    mode: "0644"
+  when: tuning_disable_thp | bool and not tuning_in_container
+  notify: reload systemd
+  tags: [tuning, thp]
+
+- name: Enable and start THP-disable service
+  ansible.builtin.systemd:
+    name: disable-thp.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - tuning_disable_thp | bool
+    - not tuning_in_container
+    - not ansible_check_mode      # unit file isn't really written under --check
+  tags: [tuning, thp]
+
+# --- resource limits ------------------------------------------------------
+- name: Set resource limits (login sessions)
+  ansible.builtin.template:
+    src: limits-tuning.conf.j2
+    dest: /etc/security/limits.d/90-tuning.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: tuning_limits | bool
+  tags: [tuning, limits]
+
+# --- performance sysctls --------------------------------------------------
+- name: Deploy performance sysctls
+  ansible.builtin.template:
+    src: sysctl-tuning.conf.j2
+    dest: /etc/sysctl.d/95-tuning.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: tuning_sysctl | bool and not tuning_in_container
+  notify: reload sysctl
+  tags: [tuning, sysctl]

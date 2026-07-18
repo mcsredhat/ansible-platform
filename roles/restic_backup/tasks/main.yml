@@ -1,0 +1,103 @@
+---
+# restic_backup — scheduled, monitored, off-host-capable backups (00-architecture §3.4)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    restic_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Install restic + rsync
+  ansible.builtin.dnf:
+    name:
+      - restic
+      - rsync
+    state: present
+  tags: [restic, packages]
+
+- name: Create /etc/restic
+  ansible.builtin.file:
+    path: /etc/restic
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  tags: [restic, config]
+
+- name: Deploy the repository password file
+  ansible.builtin.copy:
+    content: "{{ restic_password }}\n"
+    dest: "{{ restic_password_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  tags: [restic, config]
+
+- name: Ensure dump dir + textfile-collector dir exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ restic_db_dump_dir }}"
+    - "{{ restic_textfile_dir }}"
+  tags: [restic, config]
+
+# --- idempotent repo init ------------------------------------------------
+- name: Probe whether the repository is initialised
+  ansible.builtin.command: "restic -r {{ restic_repository }} snapshots"
+  environment:
+    RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
+  register: restic_probe
+  failed_when: false
+  changed_when: false
+  tags: [restic, repo]
+
+- name: Initialise the restic repository
+  ansible.builtin.command: "restic -r {{ restic_repository }} init"
+  environment:
+    RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
+  when: restic_probe.rc != 0
+  tags: [restic, repo]
+
+# --- backup script + schedule --------------------------------------------
+- name: Deploy the backup script
+  ansible.builtin.template:
+    src: restic-backup.sh.j2
+    dest: /usr/local/bin/restic-backup.sh
+    owner: root
+    group: root
+    mode: "0750"
+  tags: [restic, script]
+
+- name: Deploy the systemd service
+  ansible.builtin.template:
+    src: restic-backup.service.j2
+    dest: /etc/systemd/system/restic-backup.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+  tags: [restic, schedule]
+
+- name: Deploy the systemd timer
+  ansible.builtin.template:
+    src: restic-backup.timer.j2
+    dest: /etc/systemd/system/restic-backup.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+  tags: [restic, schedule]
+
+- name: Enable and start the backup timer
+  ansible.builtin.systemd:
+    name: restic-backup.timer
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: not restic_in_container
+  tags: [restic, schedule]

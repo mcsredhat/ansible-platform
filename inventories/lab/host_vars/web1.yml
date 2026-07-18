@@ -1,0 +1,6 @@
+---
+ansible_host: 192.168.1.21
+node_ip: "192.168.1.21"
+backend_marker: "web1-blue"
+wp_role: install        # web1 installs WordPress
+backend_label: "web1-blue"

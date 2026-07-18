@@ -1,0 +1,16 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: php cli present
+      ansible.builtin.command: php -v
+      changed_when: false
+    - name: core extensions present
+      ansible.builtin.command: php -m
+      register: mods
+      changed_when: false
+    - ansible.builtin.assert:
+        that:
+          - "'mysqlnd' in mods.stdout"
+          - "'opcache' in mods.stdout"

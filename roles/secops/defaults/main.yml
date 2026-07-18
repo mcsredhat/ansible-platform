@@ -1,0 +1,12 @@
+---
+# secops — activates detective controls into metrics + alerting (Phase 5d)
+secops_textfile_dir: /var/lib/node_exporter/textfile_collector
+
+# Forward auditd events to journald (so Loki/promtail ships them for LogQL rules).
+secops_audit_to_journald: true
+
+# fail2ban metrics
+secops_fail2ban_metrics: true
+
+# AIDE integrity metric (hooks the existing aide-check timer)
+secops_aide_metrics: true

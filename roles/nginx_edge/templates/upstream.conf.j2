@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+upstream {{ edge_upstream_name }} {
+    {{ edge_lb_method }};
+{% for b in edge_backends %}
+    server {{ b }}:{{ edge_backend_port }} max_fails={{ edge_max_fails }} fail_timeout={{ edge_fail_timeout }};
+{% endfor %}
+}

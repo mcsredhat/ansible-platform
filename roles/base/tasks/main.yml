@@ -1,0 +1,96 @@
+---
+# base — foundation applied to every node (00-architecture §3.1)
+
+- name: Detect container runtime (skip kernel-level tasks under molecule/CI)
+  ansible.builtin.set_fact:
+    base_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+# --- identity -------------------------------------------------------------
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+  tags: [base, hostname]
+
+- name: Render /etc/hosts from the platform map
+  ansible.builtin.template:
+    src: hosts.j2
+    dest: /etc/hosts
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [base, hostname]
+
+# --- packages & repos -----------------------------------------------------
+- name: Enable CodeReady Builder repo (RHEL only)
+  community.general.rhsm_repository:
+    name: "codeready-builder-for-rhel-9-{{ ansible_facts['architecture'] }}-rpms"
+    state: enabled
+  when: ansible_facts['distribution'] == 'RedHat'
+  tags: [base, packages]
+
+- name: Install EPEL release
+  ansible.builtin.dnf:
+    name: "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+    state: present
+    disable_gpg_check: true
+  when: base_enable_epel | bool
+  tags: [base, packages]
+
+- name: Install base packages
+  ansible.builtin.dnf:
+    name: "{{ base_packages }}"
+    state: present
+  tags: [base, packages]
+
+# --- time -----------------------------------------------------------------
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ base_timezone }}"
+  tags: [base, time]
+
+- name: Enable and start chronyd
+  ansible.builtin.service:
+    name: chronyd
+    state: started
+    enabled: true
+  when: not base_in_container
+  tags: [base, time]
+
+# --- networking (nmcli) ---------------------------------------------------
+# IDEMPOTENT: on a node already at its target IP this changes nothing and never
+# flaps. The FIRST DHCP->static conversion can drop the control channel — run it
+# from the console, or accept one reconnect. Disable with base_manage_network=false.
+- name: Configure static networking
+  community.general.nmcli:
+    conn_name: "{{ base_nmcli_conn | default(ansible_facts['default_ipv4']['interface'], true) }}"
+    ifname: "{{ ansible_facts['default_ipv4']['interface'] }}"
+    type: ethernet
+    ip4: "{{ node_ip }}/{{ base_prefix }}"
+    gw4: "{{ gateway }}"
+    dns4: "{{ [dns_server] }}"
+    method4: manual
+    state: present
+  when:
+    - base_manage_network | bool
+    - not base_in_container
+    - node_ip is defined
+  notify: reconnect nmcli
+  tags: [base, network]
+
+# --- security baseline ----------------------------------------------------
+- name: Set SELinux state
+  ansible.posix.selinux:
+    policy: targeted
+    state: "{{ base_selinux_state }}"
+  when: not base_in_container
+  tags: [base, selinux]
+
+- name: Enable and start firewalld
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  when: not base_in_container
+  tags: [base, firewall]

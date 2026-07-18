@@ -1,0 +1,34 @@
+---
+# fail2ban — install + configure jails, firewalld banaction (00-architecture §4.1)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    fail2ban_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Install fail2ban (+ firewalld integration)
+  ansible.builtin.dnf:
+    name:
+      - fail2ban
+      - fail2ban-firewalld
+    state: present
+  tags: [fail2ban, packages]
+
+- name: Deploy the platform jail configuration
+  ansible.builtin.template:
+    src: platform.local.j2
+    dest: /etc/fail2ban/jail.d/10-platform.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart fail2ban
+  tags: [fail2ban, config]
+
+- name: Enable and start fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+  when: not fail2ban_in_container
+  tags: [fail2ban, service]

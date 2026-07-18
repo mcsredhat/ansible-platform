@@ -1,0 +1,60 @@
+---
+# keepalived — VRRP floating VIP, health-tracked to nginx (00-architecture §4.6)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    keepalived_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Install keepalived
+  ansible.builtin.dnf:
+    name: keepalived
+    state: present
+  tags: [keepalived, packages]
+
+- name: Deploy the nginx health-check script
+  ansible.builtin.copy:
+    src: chk_nginx.sh
+    dest: /etc/keepalived/chk_nginx.sh
+    owner: root
+    group: root
+    mode: "0755"
+  notify: restart keepalived
+  tags: [keepalived, config]
+
+- name: Deploy keepalived.conf
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart keepalived
+  tags: [keepalived, config]
+
+# --- firewall: allow VRRP between the edge peers (daemon-tolerant) ----------
+- name: Is firewalld running?
+  ansible.builtin.command: systemctl is-active firewalld
+  register: ka_firewalld
+  changed_when: false
+  failed_when: false
+  when: not keepalived_in_container
+  tags: [keepalived, firewall]
+
+- name: Allow VRRP from the platform subnet
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ subnet | default('192.168.1.0/24') }} protocol value=vrrp accept"
+    permanent: true
+    immediate: "{{ (ka_firewalld.stdout | default('')) == 'active' }}"
+    state: enabled
+  when: not keepalived_in_container
+  tags: [keepalived, firewall]
+
+- name: Enable and start keepalived
+  ansible.builtin.service:
+    name: keepalived
+    state: started
+    enabled: true
+  when: not keepalived_in_container
+  tags: [keepalived, service]

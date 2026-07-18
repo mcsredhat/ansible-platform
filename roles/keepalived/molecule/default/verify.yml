@@ -1,0 +1,16 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: keepalived.conf rendered
+      ansible.builtin.command: grep -q "vrrp_instance VI_APP" /etc/keepalived/keepalived.conf
+      changed_when: false
+    - name: health script executable
+      ansible.builtin.stat:
+        path: /etc/keepalived/chk_nginx.sh
+      register: s
+    - ansible.builtin.assert:
+        that:
+          - s.stat.exists
+          - s.stat.mode == '0755'

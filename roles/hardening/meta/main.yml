@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: hardening
+  author: mcsredhat
+  description: Preventive security hardening (sshd, PAM faillock, pwquality, sudo logging, sysctls) for RHEL 9
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - security
+    - hardening
+    - cis
+dependencies: []

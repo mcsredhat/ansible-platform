@@ -1,0 +1,91 @@
+---
+# nginx_exporter — pinned binary + systemd, scrapes a local nginx stub_status
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    nginx_exporter_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Create the nginx_exporter system user
+  ansible.builtin.user:
+    name: "{{ nginx_exporter_user }}"
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+  tags: [nginx_exporter, user]
+
+- name: Deploy the nginx stub_status snippet
+  ansible.builtin.copy:
+    dest: /etc/nginx/conf.d/stub_status.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by Ansible (nginx_exporter role)
+      server {
+          listen 127.0.0.1:8081;
+          location /nginx_status {
+              stub_status;
+              allow 127.0.0.1;
+              deny all;
+          }
+      }
+  notify: reload nginx
+  tags: [nginx_exporter, config]
+
+- name: Download and extract nginx_exporter
+  ansible.builtin.unarchive:
+    src: "{{ nginx_exporter_download_url }}"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/nginx-prometheus-exporter"
+  tags: [nginx_exporter, install]
+
+- name: Install the nginx_exporter binary
+  ansible.builtin.copy:
+    src: /tmp/nginx-prometheus-exporter
+    dest: /usr/local/bin/nginx-prometheus-exporter
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  notify: restart nginx_exporter
+  tags: [nginx_exporter, install]
+
+- name: Deploy the nginx_exporter systemd unit
+  ansible.builtin.template:
+    src: nginx_exporter.service.j2
+    dest: /etc/systemd/system/nginx_exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart nginx_exporter
+  tags: [nginx_exporter, service]
+
+- name: Enable and start nginx_exporter
+  ansible.builtin.systemd:
+    name: nginx_exporter
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: not nginx_exporter_in_container
+  tags: [nginx_exporter, service]
+
+- name: Is firewalld running?
+  ansible.builtin.command: systemctl is-active firewalld
+  register: nginx_exporter_firewalld
+  changed_when: false
+  failed_when: false
+  tags: [nginx_exporter, firewall]
+
+- name: Allow the scraper (obs1) to reach nginx_exporter
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ nginx_exporter_scraper_ip }} port port={{ nginx_exporter_port }} protocol=tcp accept"
+    permanent: true
+    immediate: "{{ nginx_exporter_firewalld.stdout == 'active' }}"
+    state: enabled
+  when: not nginx_exporter_in_container
+  tags: [nginx_exporter, firewall]

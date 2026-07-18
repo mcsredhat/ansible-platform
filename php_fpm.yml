@@ -1,0 +1,7 @@
+---
+# Phase 4 — PHP-FPM on the web tier.
+- name: Provision PHP-FPM
+  hosts: web
+  become: true
+  roles:
+    - php_fpm

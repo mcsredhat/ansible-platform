@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: php_fpm
+  author: mcsredhat
+  description: PHP 8.2 FPM pool (runs as webdata) wired for MariaDB + Redis on RHEL 9
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - php
+    - wordpress
+dependencies: []

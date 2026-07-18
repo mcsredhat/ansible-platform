@@ -1,0 +1,7 @@
+---
+# Phase 2 entry play — detective auditing on every node.
+- name: Apply auditing and compliance to all nodes
+  hosts: all
+  become: true
+  roles:
+    - audit

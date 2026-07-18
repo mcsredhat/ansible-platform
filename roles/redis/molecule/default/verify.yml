@@ -1,0 +1,12 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: requirepass configured
+      ansible.builtin.command: grep -q "^requirepass " /etc/redis/redis.conf
+      changed_when: false
+
+    - name: eviction policy configured
+      ansible.builtin.command: grep -q "^maxmemory-policy allkeys-lru" /etc/redis/redis.conf
+      changed_when: false

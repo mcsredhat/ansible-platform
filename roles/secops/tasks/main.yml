@@ -1,0 +1,125 @@
+---
+# secops — turn detective controls (auditd, AIDE, fail2ban) into metrics + logs
+# that feed Prometheus alerts, Loki LogQL rules, and the security dashboard.
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    secops_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Ensure the textfile-collector directory exists
+  ansible.builtin.file:
+    path: "{{ secops_textfile_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [secops]
+
+# ---- fail2ban metrics ----
+- name: Install the fail2ban metrics script
+  ansible.builtin.copy:
+    src: fail2ban-metrics.sh
+    dest: /usr/local/bin/fail2ban-metrics.sh
+    owner: root
+    group: root
+    mode: "0755"
+  when: secops_fail2ban_metrics | bool
+  tags: [secops, fail2ban]
+
+- name: Deploy fail2ban metrics service + timer
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: fail2ban-metrics.service.j2, dest: /etc/systemd/system/fail2ban-metrics.service }
+    - { src: fail2ban-metrics.timer.j2, dest: /etc/systemd/system/fail2ban-metrics.timer }
+  when: secops_fail2ban_metrics | bool
+  notify: reload systemd
+  tags: [secops, fail2ban]
+
+- name: Enable the fail2ban metrics timer
+  ansible.builtin.systemd:
+    name: fail2ban-metrics.timer
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: secops_fail2ban_metrics | bool and not secops_in_container
+  tags: [secops, fail2ban]
+
+# ---- AIDE integrity metrics ----
+- name: Install the AIDE metrics script
+  ansible.builtin.copy:
+    src: aide-metrics.sh
+    dest: /usr/local/bin/aide-metrics.sh
+    owner: root
+    group: root
+    mode: "0755"
+  when: secops_aide_metrics | bool
+  tags: [secops, aide]
+
+- name: Deploy AIDE metrics service + timer
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: aide-metrics.service.j2, dest: /etc/systemd/system/aide-metrics.service }
+    - { src: aide-metrics.timer.j2, dest: /etc/systemd/system/aide-metrics.timer }
+  when: secops_aide_metrics | bool
+  notify: reload systemd
+  tags: [secops, aide]
+
+- name: Enable the AIDE metrics timer
+  ansible.builtin.systemd:
+    name: aide-metrics.timer
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: secops_aide_metrics | bool and not secops_in_container
+  tags: [secops, aide]
+
+# ---- auditd -> journald forwarding (so audit events reach Loki) ----
+- name: Install audispd syslog plugin package (best-effort; needs internet)
+  ansible.builtin.dnf:
+    name: audispd-plugins
+    state: present
+  register: secops_audisp_pkg
+  failed_when: false
+  when: secops_audit_to_journald | bool
+  tags: [secops, audit]
+
+- name: Locate the audisp-syslog binary
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: secops_audisp_paths
+  loop:
+    - /usr/sbin/audisp-syslog
+    - /sbin/audisp-syslog
+  when: secops_audit_to_journald | bool
+  tags: [secops, audit]
+
+- name: Resolve the audisp-syslog path
+  ansible.builtin.set_fact:
+    secops_audisp_path: "{{ (secops_audisp_paths.results | selectattr('stat.exists','defined') | selectattr('stat.exists') | map(attribute='stat.path') | list | first) | default('') }}"
+  when: secops_audit_to_journald | bool
+  tags: [secops, audit]
+
+- name: Configure auditd to forward events to syslog/journald
+  ansible.builtin.template:
+    src: audit-syslog.conf.j2
+    dest: /etc/audit/plugins.d/syslog.conf
+    owner: root
+    group: root
+    mode: "0640"
+  when:
+    - secops_audit_to_journald | bool
+    - secops_audisp_path | default('') | length > 0
+  notify: restart auditd
+  tags: [secops, audit]

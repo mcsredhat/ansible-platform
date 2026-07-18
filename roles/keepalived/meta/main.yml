@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: keepalived
+  author: mcsredhat
+  description: VRRP floating VIP for the HA edge, health-tracked to nginx (RHEL 9)
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - keepalived
+    - ha
+    - vrrp
+dependencies: []

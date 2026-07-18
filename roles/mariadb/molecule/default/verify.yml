@@ -1,0 +1,14 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: platform config present
+      ansible.builtin.command: grep -q "innodb_buffer_pool_size" /etc/my.cnf.d/zz-platform.cnf
+      changed_when: false
+
+    - name: wordpress database exists
+      ansible.builtin.command: mysql -N -e "SHOW DATABASES LIKE 'wordpress';"
+      register: dbq
+      changed_when: false
+      failed_when: "'wordpress' not in dbq.stdout"

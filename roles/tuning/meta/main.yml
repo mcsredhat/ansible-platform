@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: tuning
+  author: mcsredhat
+  description: Host-level performance tuning (tuned, THP off, limits, perf sysctls) for RHEL 9
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - performance
+    - tuning
+dependencies: []

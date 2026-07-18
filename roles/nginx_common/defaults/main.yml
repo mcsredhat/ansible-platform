@@ -1,0 +1,8 @@
+---
+# nginx_common role — shared nginx baseline (00-architecture §4.1)
+# Installed on BOTH web and edge tiers; vhosts come from the tier-specific roles.
+nginx_worker_processes: auto
+nginx_worker_connections: 1024
+nginx_keepalive_timeout: 65
+nginx_server_tokens: "off"
+nginx_client_max_body_size: "64m"     # headroom for WordPress media uploads

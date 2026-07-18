@@ -1,0 +1,10 @@
+---
+- name: validate nginx
+  ansible.builtin.command: /usr/sbin/nginx -t
+  changed_when: false
+
+- name: reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  when: not (wp_in_container | default(false))

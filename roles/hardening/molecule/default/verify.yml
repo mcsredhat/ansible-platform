@@ -1,0 +1,20 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: pwquality configured
+      ansible.builtin.command: grep -q "minlen = 14" /etc/security/pwquality.conf
+      changed_when: false
+
+    - name: faillock configured
+      ansible.builtin.command: grep -q "deny = 5" /etc/security/faillock.conf
+      changed_when: false
+
+    - name: sudo logging drop-in present
+      ansible.builtin.command: test -f /etc/sudoers.d/10-logging
+      changed_when: false
+
+    - name: login.defs umask set
+      ansible.builtin.command: grep -qE "^UMASK\s+027" /etc/login.defs
+      changed_when: false

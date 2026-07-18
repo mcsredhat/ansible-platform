@@ -1,0 +1,82 @@
+---
+# node_exporter — pinned binary + systemd, textfile collector enabled (Phase 5)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    node_exporter_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Create the node_exporter system user
+  ansible.builtin.user:
+    name: "{{ node_exporter_user }}"
+    system: true
+    shell: /sbin/nologin
+    home: /var/lib/node_exporter
+    create_home: false
+  tags: [node_exporter, user]
+
+- name: Ensure the textfile-collector directory exists
+  ansible.builtin.file:
+    path: "{{ node_exporter_textfile_dir }}"
+    state: directory
+    owner: "{{ node_exporter_user }}"
+    group: "{{ node_exporter_user }}"
+    mode: "0755"
+  tags: [node_exporter, config]
+
+- name: Download and extract node_exporter
+  ansible.builtin.unarchive:
+    src: "{{ node_exporter_download_url }}"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}/node_exporter"
+  tags: [node_exporter, install]
+
+- name: Install the node_exporter binary
+  ansible.builtin.copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.{{ node_exporter_arch }}/node_exporter"
+    dest: /usr/local/bin/node_exporter
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  notify: restart node_exporter
+  tags: [node_exporter, install]
+
+- name: Deploy the node_exporter systemd unit
+  ansible.builtin.template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart node_exporter
+  tags: [node_exporter, service]
+
+- name: Enable and start node_exporter
+  ansible.builtin.systemd:
+    name: node_exporter
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: not node_exporter_in_container
+  tags: [node_exporter, service]
+
+- name: Is firewalld running?
+  ansible.builtin.command: systemctl is-active firewalld
+  register: node_exporter_firewalld
+  changed_when: false
+  failed_when: false
+  tags: [node_exporter, firewall]
+
+- name: Allow the scraper (obs1) to reach node_exporter
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ node_exporter_scraper_ip }} port port={{ node_exporter_port }} protocol=tcp accept"
+    permanent: true
+    immediate: "{{ node_exporter_firewalld.stdout == 'active' }}"
+    state: enabled
+  when: not node_exporter_in_container
+  tags: [node_exporter, firewall]

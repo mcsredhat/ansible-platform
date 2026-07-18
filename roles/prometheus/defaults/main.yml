@@ -1,0 +1,29 @@
+---
+# prometheus — central metrics server on obs1 (00-architecture §5, Phase 5)
+prometheus_version: "2.54.1"
+prometheus_arch: "linux-amd64"
+prometheus_user: prometheus
+prometheus_port: 9090
+prometheus_retention: "15d"
+
+prometheus_config_dir: /etc/prometheus
+prometheus_data_dir: /var/lib/prometheus
+prometheus_rules_dir: /etc/prometheus/rules
+
+# Who may reach the Prometheus UI/API (mgmt subnet).
+prometheus_allowed_source: "192.168.1.0/24"
+
+# Alertmanager endpoint (built next; obs1 local).
+prometheus_alertmanager: "127.0.0.1:9093"
+
+# Scrape target ports per job.
+prometheus_node_port: 9100
+prometheus_nginx_port: 9113
+prometheus_mysqld_port: 9104
+
+prometheus_download_url: >-
+  https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.{{ prometheus_arch }}.tar.gz
+
+# Blackbox probe wiring (blackbox_exporter role runs on the same obs1 host).
+blackbox_exporter_port: 9115
+blackbox_probe_host: "app.platform.lab"

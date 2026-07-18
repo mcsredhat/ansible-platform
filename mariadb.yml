@@ -1,0 +1,7 @@
+---
+# Phase 3 entry play — MariaDB on the data tier.
+- name: Provision the MariaDB data tier
+  hosts: data
+  become: true
+  roles:
+    - mariadb

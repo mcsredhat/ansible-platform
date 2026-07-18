@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: fail2ban
+  author: mcsredhat
+  description: fail2ban with firewalld banaction; per-tier jails (ssh/nginx/mail) on RHEL 9
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - security
+    - fail2ban
+dependencies: []

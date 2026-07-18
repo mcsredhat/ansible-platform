@@ -1,0 +1,148 @@
+---
+# grafana — RPM install, provisioned datasources, vaulted admin password
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    grafana_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Add the official Grafana RPM repo
+  ansible.builtin.yum_repository:
+    name: grafana
+    description: Grafana OSS
+    baseurl: https://rpm.grafana.com
+    gpgcheck: true
+    gpgkey: https://rpm.grafana.com/gpg.key
+    enabled: true
+  tags: [grafana, repo]
+
+- name: Install Grafana
+  ansible.builtin.dnf:
+    name: grafana
+    state: present
+  tags: [grafana, install]
+
+- name: Deploy grafana.ini (admin password applies on first boot only)
+  ansible.builtin.template:
+    src: grafana.ini.j2
+    dest: /etc/grafana/grafana.ini
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: restart grafana
+  tags: [grafana, config]
+
+- name: Ensure the provisioning/datasources directory exists
+  ansible.builtin.file:
+    path: /etc/grafana/provisioning/datasources
+    state: directory
+    owner: root
+    group: grafana
+    mode: "0750"
+  tags: [grafana, config]
+
+- name: Provision the Prometheus + Loki datasources
+  ansible.builtin.template:
+    src: datasources.yml.j2
+    dest: /etc/grafana/provisioning/datasources/platform.yml
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: restart grafana
+  tags: [grafana, config]
+
+- name: Ensure the provisioning/dashboards directory exists
+  ansible.builtin.file:
+    path: /etc/grafana/provisioning/dashboards
+    state: directory
+    owner: root
+    group: grafana
+    mode: "0750"
+  tags: [grafana, dashboards]
+
+- name: Ensure the dashboard JSON directory exists
+  ansible.builtin.file:
+    path: /var/lib/grafana/dashboards
+    state: directory
+    owner: grafana
+    group: grafana
+    mode: "0755"
+  tags: [grafana, dashboards]
+
+- name: Provision the dashboard provider
+  ansible.builtin.template:
+    src: dashboard-provider.yml.j2
+    dest: /etc/grafana/provisioning/dashboards/platform.yml
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: restart grafana
+  tags: [grafana, dashboards]
+
+- name: Deploy the platform dashboards (JSON)
+  ansible.builtin.copy:
+    src: "dashboards/{{ item }}"
+    dest: "/var/lib/grafana/dashboards/{{ item }}"
+    owner: grafana
+    group: grafana
+    mode: "0644"
+  loop:
+    - platform-overview.json
+    - host-metrics.json
+    - slo-error-budget.json
+    - capacity-trends.json
+    - security-overview.json
+  notify: restart grafana
+  tags: [grafana, dashboards]
+
+- name: Enable and start Grafana
+  ansible.builtin.systemd:
+    name: grafana-server
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: not grafana_in_container
+  tags: [grafana, service]
+
+- name: Check whether the admin password has already been set by us
+  ansible.builtin.stat:
+    path: /etc/grafana/.admin_pw_set
+  register: grafana_pw_marker
+  tags: [grafana, config]
+
+# grafana-cli talks to the sqlite DB directly, so it works even before the
+# service has (re)read grafana.ini — but only run it once, since it always
+# reports success and would otherwise show as spuriously "changed" every run.
+- name: Set the Grafana admin password from vault (first run only)
+  ansible.builtin.command: >
+    grafana-cli --homepath /usr/share/grafana admin reset-admin-password {{ vault_grafana_admin_pw }}
+  when: not grafana_pw_marker.stat.exists
+  changed_when: true
+  tags: [grafana, config]
+
+- name: Record that the admin password has been set
+  ansible.builtin.file:
+    path: /etc/grafana/.admin_pw_set
+    state: touch
+    owner: root
+    group: grafana
+    mode: "0640"
+  when: not grafana_pw_marker.stat.exists
+  tags: [grafana, config]
+
+- name: Is firewalld running?
+  ansible.builtin.command: systemctl is-active firewalld
+  register: grafana_firewalld
+  changed_when: false
+  failed_when: false
+  tags: [grafana, firewall]
+
+- name: Allow the mgmt subnet to reach the Grafana UI
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ grafana_allowed_source }} port port={{ grafana_port }} protocol=tcp accept"
+    permanent: true
+    immediate: "{{ grafana_firewalld.stdout == 'active' }}"
+    state: enabled
+  when: not grafana_in_container
+  tags: [grafana, firewall]

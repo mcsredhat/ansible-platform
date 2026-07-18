@@ -1,0 +1,8 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: limits drop-in present
+      ansible.builtin.command: grep -q "nofile" /etc/security/limits.d/90-tuning.conf
+      changed_when: false

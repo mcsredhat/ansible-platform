@@ -1,0 +1,130 @@
+---
+# audit — detective security controls (00-architecture §4.2)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    audit_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+# ===== auditd =====
+- name: Install auditd
+  ansible.builtin.dnf:
+    name: audit
+    state: present
+  when: audit_auditd | bool
+  tags: [audit, auditd]
+
+- name: Deploy audit rules
+  ansible.builtin.template:
+    src: audit.rules.j2
+    dest: /etc/audit/rules.d/99-platform.rules
+    owner: root
+    group: root
+    mode: "0600"
+  when: audit_auditd | bool
+  notify: load audit rules
+  tags: [audit, auditd]
+
+- name: Enable and start auditd
+  ansible.builtin.service:
+    name: auditd
+    state: started
+    enabled: true
+  when: audit_auditd | bool and not audit_in_container
+  tags: [audit, auditd]
+
+# ===== AIDE =====
+- name: Install AIDE
+  ansible.builtin.dnf:
+    name: aide
+    state: present
+  when: audit_aide | bool
+  tags: [audit, aide]
+
+- name: Initialize AIDE database (first run only)
+  ansible.builtin.command: aide --init
+  args:
+    creates: /var/lib/aide/aide.db.gz
+  when: audit_aide | bool and audit_aide_init | bool and not audit_in_container
+  tags: [audit, aide]
+
+- name: Activate the AIDE baseline
+  ansible.builtin.command: mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+  args:
+    removes: /var/lib/aide/aide.db.new.gz
+  when: audit_aide | bool and audit_aide_init | bool and not audit_in_container
+  tags: [audit, aide]
+
+- name: Deploy AIDE check service + timer
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: aide-check.service.j2, dest: /etc/systemd/system/aide-check.service }
+    - { src: aide-check.timer.j2, dest: /etc/systemd/system/aide-check.timer }
+  when: audit_aide | bool
+  notify: reload systemd
+  tags: [audit, aide]
+
+- name: Enable AIDE check timer
+  ansible.builtin.systemd:
+    name: aide-check.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: audit_aide | bool and not audit_in_container and not ansible_check_mode
+  tags: [audit, aide]
+
+# ===== OpenSCAP =====
+- name: Install OpenSCAP + SCAP Security Guide
+  ansible.builtin.dnf:
+    name:
+      - openscap-scanner
+      - scap-security-guide
+    state: present
+  when: audit_openscap | bool
+  tags: [audit, openscap]
+
+- name: Ensure OpenSCAP report directory
+  ansible.builtin.file:
+    path: "{{ audit_openscap_report_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  when: audit_openscap | bool
+  tags: [audit, openscap]
+
+- name: Deploy OpenSCAP scan script + units
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: oscap-scan.sh.j2, dest: /usr/local/bin/oscap-scan.sh, mode: "0750" }
+    - { src: oscap-scan.service.j2, dest: /etc/systemd/system/oscap-scan.service, mode: "0644" }
+    - { src: oscap-scan.timer.j2, dest: /etc/systemd/system/oscap-scan.timer, mode: "0644" }
+  when: audit_openscap | bool
+  notify: reload systemd
+  tags: [audit, openscap]
+
+- name: Enable OpenSCAP scan timer
+  ansible.builtin.systemd:
+    name: oscap-scan.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: audit_openscap | bool and not audit_in_container and not ansible_check_mode
+  tags: [audit, openscap]
+
+- name: Run an OpenSCAP scan now (optional)
+  ansible.builtin.command: /usr/local/bin/oscap-scan.sh
+  changed_when: false
+  when: audit_openscap | bool and audit_openscap_run_now | bool and not audit_in_container
+  tags: [audit, openscap]

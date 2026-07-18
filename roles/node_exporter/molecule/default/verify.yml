@@ -1,0 +1,20 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: node_exporter binary is installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/node_exporter
+      register: ne_bin
+    - name: Assert binary present
+      ansible.builtin.assert:
+        that: ne_bin.stat.exists and ne_bin.stat.executable
+
+    - name: Textfile collector dir exists
+      ansible.builtin.stat:
+        path: /var/lib/node_exporter/textfile_collector
+      register: ne_tf
+    - name: Assert textfile dir present
+      ansible.builtin.assert:
+        that: ne_tf.stat.isdir is defined and ne_tf.stat.isdir

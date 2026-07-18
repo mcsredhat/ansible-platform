@@ -1,0 +1,12 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: audit rules deployed
+      ansible.builtin.command: grep -q "identity" /etc/audit/rules.d/99-platform.rules
+      changed_when: false
+
+    - name: AIDE check timer unit present
+      ansible.builtin.command: test -f /etc/systemd/system/aide-check.timer
+      changed_when: false

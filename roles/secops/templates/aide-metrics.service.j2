@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Emit AIDE integrity metrics for node_exporter
+
+[Service]
+Type=oneshot
+Nice=19
+IOSchedulingClass=idle
+ExecStart=/usr/local/bin/aide-metrics.sh

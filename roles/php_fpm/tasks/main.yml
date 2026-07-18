@@ -1,0 +1,86 @@
+---
+# php_fpm — PHP 8.2 FPM pool as webdata, wired for MariaDB + Redis (00-architecture §4.2)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    php_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+# --- PHP module stream ----------------------------------------------------
+- name: Reset the PHP DNF module
+  ansible.builtin.command: dnf -y module reset php
+  register: php_reset
+  changed_when: "'Nothing to do' not in php_reset.stdout"
+  tags: [php, module]
+
+- name: Enable the PHP {{ php_stream }} stream
+  ansible.builtin.command: "dnf -y module enable php:{{ php_stream }}"
+  register: php_enable
+  changed_when: "'Nothing to do' not in php_enable.stdout"
+  tags: [php, module]
+
+- name: Install PHP-FPM + extensions
+  ansible.builtin.dnf:
+    name: "{{ php_packages }}"
+    state: present
+  tags: [php, packages]
+
+# --- shared identity: webdata 1980 must exist here too (the pool runs as it) ---
+- name: Ensure the webdata group exists (gid {{ webdata_gid | default(1980) }})
+  ansible.builtin.group:
+    name: webdata
+    gid: "{{ webdata_gid | default(1980) }}"
+    state: present
+  tags: [php, identity]
+
+- name: Ensure the webdata user exists (uid {{ webdata_uid | default(1980) }})
+  ansible.builtin.user:
+    name: webdata
+    uid: "{{ webdata_uid | default(1980) }}"
+    group: webdata
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+    state: present
+  tags: [php, identity]
+
+# --- pool identity + socket (manual step 4, adapted to webdata) ------------
+- name: Configure the FPM pool (user/group/socket)
+  ansible.builtin.lineinfile:
+    path: "{{ php_pool_conf }}"
+    regexp: "{{ item.re }}"
+    line: "{{ item.line }}"
+  loop:
+    - { re: '^user = ', line: 'user = {{ php_pool_user }}' }
+    - { re: '^group = ', line: 'group = {{ php_pool_group }}' }
+    - { re: '^;?listen.owner = ', line: 'listen.owner = {{ php_listen_owner }}' }
+    - { re: '^;?listen.group = ', line: 'listen.group = {{ php_listen_group }}' }
+    - { re: '^;?listen.mode = ', line: 'listen.mode = {{ php_listen_mode }}' }
+  notify: restart php-fpm
+  tags: [php, pool]
+
+# --- SELinux: PHP must reach MariaDB (3306) AND Redis (6379) ---------------
+- name: Allow PHP to connect to the database (SELinux)
+  ansible.posix.seboolean:
+    name: httpd_can_network_connect_db
+    state: true
+    persistent: true
+  when: not php_in_container
+  tags: [php, selinux]
+
+- name: Allow PHP general network egress for Redis (SELinux)
+  ansible.posix.seboolean:
+    name: httpd_can_network_connect
+    state: true
+    persistent: true
+  when: not php_in_container
+  tags: [php, selinux]
+
+- name: Enable and start PHP-FPM
+  ansible.builtin.service:
+    name: php-fpm
+    state: started
+    enabled: true
+  when: not php_in_container
+  tags: [php, service]

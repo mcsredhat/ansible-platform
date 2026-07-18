@@ -1,0 +1,10 @@
+---
+# webdata normally comes from nfs_server; create it here so the pool user exists.
+- name: Prepare
+  hosts: all
+  become: true
+  tasks:
+    - name: nginx present (socket group)
+      ansible.builtin.dnf:
+        name: nginx
+        state: present

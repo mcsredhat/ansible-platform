@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: nginx_exporter
+  author: mcsredhat
+  description: NGINX Prometheus exporter (stub_status scrape) for web + edge tiers
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: ["9"]
+  galaxy_tags: [rhel, prometheus, nginx, monitoring, observability]
+dependencies: []

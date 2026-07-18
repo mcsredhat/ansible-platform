@@ -1,0 +1,7 @@
+---
+# Phase 5 — nginx request/upstream metrics on web + edge.
+- name: Provision nginx_exporter
+  hosts: web:edge
+  become: true
+  roles:
+    - nginx_exporter

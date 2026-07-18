@@ -1,0 +1,10 @@
+---
+# nfs_server role — shared wp-content/uploads export (00-architecture §3.3)
+# Lives on the data tier. Both web nodes mount this so blue/green share uploaded media.
+nfs_webdata_uid: "{{ webdata_uid | default(1980) }}"
+nfs_webdata_gid: "{{ webdata_gid | default(1980) }}"
+nfs_export_path: /srv/wordpress/uploads
+nfs_export_clients: "{{ subnet | default('192.168.1.0/24') }}"
+# root_squash keeps client-root from owning files; php-fpm writes as uid 980, which
+# lines up with the dir owner on BOTH ends — that alignment is the whole point.
+nfs_export_options: "rw,sync,no_subtree_check,root_squash"

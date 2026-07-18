@@ -1,0 +1,6 @@
+---
+- name: restart fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: restarted
+  when: not (fail2ban_in_container | default(false))

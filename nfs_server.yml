@@ -1,0 +1,7 @@
+---
+# Phase 3 — shared media export on the data tier.
+- name: Provision the NFS server (shared wp-content/uploads)
+  hosts: data
+  become: true
+  roles:
+    - nfs_server

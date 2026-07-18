@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+server {
+    listen 80;
+    server_name {{ edge_server_name }} {{ edge_extra_names }};
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name {{ edge_server_name }} {{ edge_extra_names }};
+
+    ssl_certificate     {{ edge_tls_cert }};
+    ssl_certificate_key {{ edge_tls_key }};
+    include /etc/nginx/snippets/ssl-params.conf;
+    include /etc/nginx/snippets/security-headers.conf;
+
+    location / {
+        proxy_pass http://{{ edge_upstream_name }};
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_next_upstream error timeout http_502 http_503;
+        proxy_read_timeout 60s;
+    }
+}

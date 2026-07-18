@@ -1,0 +1,149 @@
+# {{ ansible_managed }}
+groups:
+  - name: platform-availability
+    rules:
+      - alert: NodeDown
+        expr: up{job="node"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node {{ '{{' }} $labels.instance {{ '}}' }} is down"
+          description: "node_exporter on {{ '{{' }} $labels.instance {{ '}}' }} has been unreachable for 2 minutes."
+
+      - alert: VipProbeDown
+        expr: probe_success{job="blackbox_vip"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VIP HTTPS probe failing"
+          description: "The blackbox probe of https://app.platform.lab/ via the VIP has failed for 2 minutes — the user-facing site may be down."
+
+      - alert: PrometheusTargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Scrape target down: {{ '{{' }} $labels.job {{ '}}' }} / {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Prometheus cannot scrape {{ '{{' }} $labels.instance {{ '}}' }} (job {{ '{{' }} $labels.job {{ '}}' }}) for 5 minutes."
+
+  - name: platform-resources
+    rules:
+      - alert: HighCpuLoad
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "CPU usage above 85% for 10 minutes on {{ '{{' }} $labels.instance {{ '}}' }}."
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100 < 15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk on {{ '{{' }} $labels.instance {{ '}}' }} ({{ '{{' }} $labels.mountpoint {{ '}}' }})"
+          description: "Less than 15% free on {{ '{{' }} $labels.mountpoint {{ '}}' }} at {{ '{{' }} $labels.instance {{ '}}' }}."
+
+      - alert: HighMemoryPressure
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory pressure on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Available memory below 10% for 10 minutes on {{ '{{' }} $labels.instance {{ '}}' }}."
+
+  - name: platform-services
+    rules:
+      - alert: NginxServiceDown
+        expr: node_systemd_unit_state{name="nginx.service",state="active"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "nginx down on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "The nginx unit is not active on {{ '{{' }} $labels.instance {{ '}}' }}."
+
+      - alert: PhpFpmServiceDown
+        expr: node_systemd_unit_state{name=~"php-fpm.*",state="active"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "php-fpm down on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "The php-fpm unit is not active on {{ '{{' }} $labels.instance {{ '}}' }}."
+
+      - alert: MariadbServiceDown
+        expr: node_systemd_unit_state{name="mariadb.service",state="active"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MariaDB down on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "The mariadb unit is not active on {{ '{{' }} $labels.instance {{ '}}' }}."
+
+  - name: platform-ha-and-backup
+    rules:
+      - alert: KeepalivedVipMissing
+        expr: absent(node_systemd_unit_state{name="keepalived.service",state="active"} == 1)
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "keepalived not active on any edge"
+          description: "No edge node reports keepalived active — the VIP may be unmanaged."
+
+      - alert: ResticBackupFailed
+        expr: restic_backup_success == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "restic backup failed on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "The last restic backup did not complete successfully on {{ '{{' }} $labels.instance {{ '}}' }}."
+
+      - alert: ResticBackupStale
+        expr: time() - restic_backup_last_success_timestamp_seconds > 172800
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "restic backup stale on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "No successful restic backup in over 48 hours on {{ '{{' }} $labels.instance {{ '}}' }}."
+
+  - name: security
+    rules:
+      - alert: AideIntegrityChanged
+        expr: aide_check_changed_files > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "AIDE detected file-integrity changes on {{ $labels.instance }}"
+          description: "{{ $value }} files changed since the AIDE baseline on {{ $labels.instance }} — investigate unauthorized modification."
+
+      - alert: AideCheckStale
+        expr: (time() - aide_check_last_run_timestamp_seconds) > 172800
+        for: 10m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "AIDE check stale on {{ $labels.instance }}"
+          description: "AIDE has not run in over 48h on {{ $labels.instance }}."
+
+      - alert: Fail2banManyBans
+        expr: sum by (instance, jail) (increase(fail2ban_banned_total[15m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High fail2ban ban rate on {{ $labels.instance }} ({{ $labels.jail }})"
+          description: "More than 10 new bans in 15m for jail {{ $labels.jail }} on {{ $labels.instance }}."

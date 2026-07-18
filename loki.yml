@@ -1,0 +1,7 @@
+---
+# Phase 5 — centralized log storage on obs1.
+- name: Provision Loki
+  hosts: obs
+  become: true
+  roles:
+    - loki

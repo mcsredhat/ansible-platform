@@ -1,0 +1,17 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: nginx config valid
+      ansible.builtin.command: /usr/sbin/nginx -t
+      changed_when: false
+    - name: upstream defined
+      ansible.builtin.command: grep -q "upstream app_backend" /etc/nginx/conf.d/00-upstream.conf
+      changed_when: false
+    - name: self-signed cert present
+      ansible.builtin.stat:
+        path: /etc/pki/nginx/app.platform.lab.crt
+      register: c
+    - ansible.builtin.assert:
+        that: c.stat.exists

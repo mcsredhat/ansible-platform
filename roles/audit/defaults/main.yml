@@ -1,0 +1,19 @@
+---
+# audit role defaults — detective controls (00-architecture §4.2)
+
+# --- auditd ---
+audit_auditd: true
+audit_immutable: false        # true appends '-e 2' (CIS); requires REBOOT to change rules after
+
+# --- AIDE file integrity ---
+audit_aide: true
+audit_aide_init: true         # build the baseline DB on first run (slow; off in CI)
+audit_aide_check_oncalendar: "*-*-* 05:00:00"
+
+# --- OpenSCAP compliance scanning ---
+audit_openscap: true
+audit_openscap_profile: "xccdf_org.ssgproject.content_profile_cis_server_l1"
+audit_openscap_datastream: "/usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml"
+audit_openscap_oncalendar: "Sun *-*-* 03:00:00"
+audit_openscap_report_dir: "/var/log/oscap"
+audit_openscap_run_now: false  # don't run a (slow) scan during the playbook by default

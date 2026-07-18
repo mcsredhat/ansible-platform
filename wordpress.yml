@@ -1,0 +1,7 @@
+---
+# Phase 4 — WordPress on the web tier.
+- name: Deploy WordPress
+  hosts: web
+  become: true
+  roles:
+    - wordpress

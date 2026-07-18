@@ -1,0 +1,7 @@
+---
+# Phase 3 entry play — shared Redis cache on the data tier.
+- name: Provision the Redis cache
+  hosts: data
+  become: true
+  roles:
+    - redis

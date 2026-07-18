@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: nginx_edge
+  author: mcsredhat
+  description: TLS reverse proxy + least_conn load balancer with failover for RHEL 9
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - nginx
+    - loadbalancer
+    - edge
+dependencies: []

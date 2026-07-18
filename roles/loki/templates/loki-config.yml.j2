@@ -1,0 +1,70 @@
+# {{ ansible_managed }}
+auth_enabled: false
+
+server:
+  http_listen_port: {{ loki_port }}
+  grpc_listen_port: 9096
+
+common:
+  path_prefix: {{ loki_data_dir }}
+  storage:
+    filesystem:
+      chunks_directory: {{ loki_data_dir }}/chunks
+      rules_directory: {{ loki_data_dir }}/rules
+  replication_factor: 1
+  ring:
+    instance_addr: 127.0.0.1
+    instance_id: loki-single
+    kvstore:
+      store: inmemory
+
+frontend:
+  address: 127.0.0.1
+
+frontend_worker:
+  frontend_address: 127.0.0.1:9096
+
+ingester:
+  lifecycler:
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    address: 127.0.0.1
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+compactor:
+  working_directory: {{ loki_data_dir }}/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+limits_config:
+  retention_period: {{ loki_retention }}
+  allow_structured_metadata: true
+
+ruler:
+  alertmanager_url: http://127.0.0.1:9093
+  enable_alertmanager_v2: true
+  evaluation:
+    mode: remote
+    query_frontend:
+      address: dns:///127.0.0.1:9096
+  storage:
+    type: local
+    local:
+      directory: /var/lib/loki/rules
+  rule_path: /var/lib/loki/rules-temp
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+  enable_api: true

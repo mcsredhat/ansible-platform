@@ -1,0 +1,10 @@
+---
+# nginx_exporter — nginx request/upstream metrics (web + edge, Phase 5)
+nginx_exporter_version: "1.4.0"
+nginx_exporter_arch: "linux_amd64"
+nginx_exporter_user: nginx_exporter
+nginx_exporter_port: 9113
+nginx_exporter_scrape_uri: "http://127.0.0.1:8081/nginx_status"
+nginx_exporter_scraper_ip: "192.168.1.41"
+nginx_exporter_download_url: >-
+  https://github.com/nginx/nginx-prometheus-exporter/releases/download/v{{ nginx_exporter_version }}/nginx-prometheus-exporter_{{ nginx_exporter_version }}_{{ nginx_exporter_arch }}.tar.gz

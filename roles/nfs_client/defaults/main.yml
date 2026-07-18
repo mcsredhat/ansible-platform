@@ -1,0 +1,8 @@
+---
+# nfs_client role — mount the shared wp-content/uploads (00-architecture §4.3)
+# Pairs with the Phase 3 nfs_server export on data1.
+nfs_server_host: "data1"                              # resolves via /etc/hosts (base role)
+nfs_server_export: "/srv/wordpress/uploads"           # matches our nfs_server (NOT /export/...)
+nfs_mount_point: "/var/www/wordpress/wp-content/uploads"
+# nofail + _netdev: a down data1 must never drop a web node into emergency mode at boot.
+nfs_mount_opts: "defaults,_netdev,nofail"

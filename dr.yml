@@ -1,0 +1,61 @@
+---
+# ============================================================================
+# DISASTER RECOVERY RUNBOOK — restore platform data from restic.
+# Run MANUALLY. Never imported by site.yml.
+#
+#   Safe (restore to staging, inspect only):
+#     ansible-playbook dr.yml -e "confirm=RESTORE"
+#
+#   Destructive (also re-import DB + uploads into live):
+#     ansible-playbook dr.yml -e "confirm=RESTORE target=live"
+# ============================================================================
+- name: Restore platform data from restic
+  hosts: data
+  become: true
+  vars:
+    restore_staging: /var/restore
+    dr_target: "{{ target | default('staging') }}"
+  tasks:
+    - name: Safety guard
+      ansible.builtin.assert:
+        that: confirm | default('') == 'RESTORE'
+        fail_msg: "Refusing to run. Re-run with -e confirm=RESTORE (and optionally target=live)."
+
+    - name: Restore the latest snapshot to staging
+      ansible.builtin.command: >
+        restic -r {{ restic_repository }} restore latest --target {{ restore_staging }}
+      environment:
+        RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
+      changed_when: true
+
+    - name: List what was restored
+      ansible.builtin.command: "find {{ restore_staging }} -maxdepth 4 -type f"
+      changed_when: false
+      register: restored
+    - ansible.builtin.debug:
+        var: restored.stdout_lines
+
+    - name: Re-import the database (LIVE — destructive)
+      ansible.builtin.shell: >
+        set -o pipefail &&
+        gunzip -c {{ restore_staging }}{{ restic_db_dump_dir }}/{{ restic_db_name }}.sql.gz
+        | mysql {{ restic_db_name }}
+      args:
+        executable: /bin/bash
+      when: dr_target == 'live'
+      changed_when: true
+
+    - name: Restore the uploads tree (LIVE — destructive)
+      ansible.builtin.command: >
+        rsync -a --delete
+        {{ restore_staging }}/srv/wordpress/uploads/ /srv/wordpress/uploads/
+      when: dr_target == 'live'
+      changed_when: true
+
+    - name: Fix uploads ownership after restore
+      ansible.builtin.file:
+        path: /srv/wordpress/uploads
+        owner: webdata
+        group: webdata
+        recurse: true
+      when: dr_target == 'live'

@@ -1,0 +1,7 @@
+---
+# Phase 2 entry play — preventive hardening on every node.
+- name: Apply preventive hardening to all nodes
+  hosts: all
+  become: true
+  roles:
+    - hardening

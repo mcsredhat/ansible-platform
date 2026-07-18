@@ -1,0 +1,165 @@
+---
+# wordpress — deploy + configure + install WordPress (00-architecture §4.4)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    wp_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+# --- shared identity (self-sufficient) ------------------------------------
+- name: Ensure the webdata group exists (gid {{ webdata_gid | default(1980) }})
+  ansible.builtin.group:
+    name: webdata
+    gid: "{{ webdata_gid | default(1980) }}"
+    state: present
+  tags: [wordpress, identity]
+
+- name: Ensure the webdata user exists (uid {{ webdata_uid | default(1980) }})
+  ansible.builtin.user:
+    name: webdata
+    uid: "{{ webdata_uid | default(1980) }}"
+    group: webdata
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+    state: present
+  tags: [wordpress, identity]
+
+# --- WP-CLI + core code ---------------------------------------------------
+- name: Install WP-CLI
+  ansible.builtin.get_url:
+    url: "{{ wp_cli_url }}"
+    dest: /usr/local/bin/wp
+    mode: "0755"
+  tags: [wordpress, wpcli]
+
+- name: Ensure the docroot exists
+  ansible.builtin.file:
+    path: "{{ wp_path }}"
+    state: directory
+    owner: webdata
+    group: webdata
+    mode: "2775"
+  tags: [wordpress, code]
+
+- name: Download WordPress core
+  ansible.builtin.command: "{{ wp_cli_bin }} core download --path={{ wp_path }} --force --allow-root"
+  args:
+    creates: "{{ wp_path }}/wp-settings.php"
+  tags: [wordpress, code]
+
+- name: Deploy wp-config.php (DB + Redis + salts + proxy shim)
+  ansible.builtin.template:
+    src: wp-config.php.j2
+    dest: "{{ wp_path }}/wp-config.php"
+    owner: webdata
+    group: webdata
+    mode: "0640"
+  no_log: true
+  tags: [wordpress, config]
+
+# --- SELinux port for the 8080 backend (before nginx listens on it) --------
+- name: Label tcp/{{ wp_backend_port }} as http_port_t (SELinux)
+  community.general.seport:
+    ports: "{{ wp_backend_port }}"
+    proto: tcp
+    setype: http_port_t
+    state: present
+  when: not wp_in_container
+  tags: [wordpress, selinux]
+
+# --- install (once; both nodes share the DB) ------------------------------
+- name: Check whether WordPress is already installed
+  ansible.builtin.command: "{{ wp_cli_bin }} core is-installed --path={{ wp_path }} --allow-root"
+  register: wp_is_installed
+  failed_when: false
+  changed_when: false
+  when: wp_role | default('') == 'install'
+  tags: [wordpress, install]
+
+- name: Install WordPress (WP-CLI, no browser/DNS)
+  ansible.builtin.command: >
+    {{ wp_cli_bin }} core install --path={{ wp_path }} --allow-root
+    --url={{ wp_site_url }} --title="{{ wp_title }}"
+    --admin_user={{ wp_admin_user }} --admin_password='{{ vault_wp_admin_pw }}'
+    --admin_email={{ wp_admin_email }} --skip-email
+  when:
+    - wp_role | default('') == 'install'
+    - wp_is_installed.rc | default(1) != 0
+  no_log: true
+  tags: [wordpress, install]
+
+# --- Redis object cache plugin (per node: plugin files are local) ----------
+- name: Install + activate the Redis Object Cache plugin
+  ansible.builtin.command: "{{ wp_cli_bin }} plugin install redis-cache --activate --path={{ wp_path }} --allow-root"
+  args:
+    creates: "{{ wp_path }}/wp-content/plugins/redis-cache/redis-cache.php"
+  tags: [wordpress, redis]
+
+- name: Enable the Redis object-cache drop-in
+  ansible.builtin.command: "{{ wp_cli_bin }} redis enable --path={{ wp_path }} --allow-root"
+  args:
+    creates: "{{ wp_path }}/wp-content/object-cache.php"
+  tags: [wordpress, redis]
+
+# --- ownership + SELinux contexts (skip the NFS uploads mount) --------------
+- name: Own the WordPress tree as webdata (excluding the NFS uploads mount)
+  ansible.builtin.shell: >
+    find {{ wp_path }} -path '{{ wp_path }}/wp-content/uploads' -prune -o
+    -exec chown webdata:webdata {} +
+  changed_when: false
+  tags: [wordpress, perms]
+
+- name: SELinux fcontext — code is httpd_sys_content_t
+  community.general.sefcontext:
+    target: "{{ wp_path }}(/.*)?"
+    setype: httpd_sys_content_t
+    state: present
+  when: not wp_in_container
+  tags: [wordpress, selinux]
+
+- name: SELinux fcontext — wp-content is writable (httpd_sys_rw_content_t)
+  community.general.sefcontext:
+    target: "{{ wp_path }}/wp-content(/.*)?"
+    setype: httpd_sys_rw_content_t
+    state: present
+  when: not wp_in_container
+  tags: [wordpress, selinux]
+
+- name: Apply the file contexts (NFS mount is governed by httpd_use_nfs, not labels)
+  ansible.builtin.command: "restorecon -R {{ wp_path }}"
+  changed_when: false
+  when: not wp_in_container
+  tags: [wordpress, selinux]
+
+# --- vhost + firewall ------------------------------------------------------
+- name: Remove the distro default vhost if present
+  ansible.builtin.file:
+    path: /etc/nginx/conf.d/default.conf
+    state: absent
+  notify:
+    - validate nginx
+    - reload nginx
+  tags: [wordpress, nginx]
+
+- name: Deploy the WordPress vhost (:{{ wp_backend_port }}, blue/green)
+  ansible.builtin.template:
+    src: wordpress.conf.j2
+    dest: /etc/nginx/conf.d/wordpress.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - validate nginx
+    - reload nginx
+  tags: [wordpress, nginx]
+
+- name: Open the backend port to the platform subnet only
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ subnet | default('192.168.1.0/24') }} port port={{ wp_backend_port }} protocol=tcp accept"
+    permanent: true
+    immediate: true
+    state: enabled
+  when: not wp_in_container
+  tags: [wordpress, firewall]

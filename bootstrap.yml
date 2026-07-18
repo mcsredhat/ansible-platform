@@ -1,0 +1,62 @@
+---
+# bootstrap.yml — prepare every RHEL 9 node for Ansible management (run ONCE, first).
+#
+# FIRST run uses an existing login + password (the key isn't on the nodes yet)
+# and the vaulted RHSM credentials:
+#   ansible-playbook bootstrap.yml -k --ask-vault-pass             # root + password
+#   ansible-playbook bootstrap.yml -u clouduser -k -K --ask-vault-pass
+#
+# After this, base.yml etc. run key-based as the deploy user
+# (uncomment ansible_user: deploy in group_vars/all/main.yml).
+- name: Bootstrap managed nodes for Ansible
+  hosts: all
+  become: true
+  gather_facts: false          # python may be absent on a truly bare node
+  vars:
+    deploy_user: deploy
+    deploy_pubkey: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_ed25519.pub') }}"
+    rhsm_register: true        # set false if nodes are already registered
+  tasks:
+    - name: Ensure python3 exists (raw, before facts)
+      ansible.builtin.raw: command -v python3 >/dev/null 2>&1 || dnf -y install python3
+      changed_when: false
+
+    - name: Gather facts now that python is present
+      ansible.builtin.setup:
+
+    # --- Red Hat registration --------------------------------------------
+    # Register AFTER cloning (here), never in the golden image — a cloned,
+    # already-registered system collides on its consumer UUID. RHEL 9 uses
+    # Simple Content Access, so repos enable on registration; no pool attach.
+    - name: Register with Red Hat via activation key
+      community.general.redhat_subscription:
+        state: present
+        org_id: "{{ vault_rhsm_org_id }}"
+        activationkey: "{{ vault_rhsm_activation_key }}"
+      when:
+        - rhsm_register | bool
+        - ansible_facts['distribution'] == 'RedHat'
+
+    # --- automation user --------------------------------------------------
+    - name: Create the deploy user
+      ansible.builtin.user:
+        name: "{{ deploy_user }}"
+        shell: /bin/bash
+        create_home: true
+
+    - name: Install the control-node public key for deploy
+      ansible.posix.authorized_key:
+        user: "{{ deploy_user }}"
+        key: "{{ deploy_pubkey }}"
+        state: present
+
+    - name: Grant passwordless sudo to deploy
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ deploy_user }}"
+        content: "{{ deploy_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        mode: "0440"
+        validate: visudo -cf %s
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} bootstrapped — registered + deploy user + key + sudo"

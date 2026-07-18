@@ -1,0 +1,97 @@
+---
+# mysqld_exporter — pinned binary + systemd, least-privilege MySQL account
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    mysqld_exporter_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Create the mysqld_exporter system user
+  ansible.builtin.user:
+    name: "{{ mysqld_exporter_user }}"
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+  tags: [mysqld_exporter, user]
+
+- name: Create the exporter MySQL account (PROCESS, REPLICATION CLIENT, SELECT only)
+  community.mysql.mysql_user:
+    name: "{{ mysqld_exporter_db_user }}"
+    host: localhost
+    password: "{{ vault_mysqld_exporter_pw }}"
+    priv: "*.*:PROCESS,REPLICATION CLIENT,SELECT"
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    state: present
+  tags: [mysqld_exporter, db]
+
+- name: Deploy the exporter's .my.cnf (credentials, root-readable only)
+  ansible.builtin.copy:
+    dest: /etc/.mysqld_exporter.cnf
+    owner: "{{ mysqld_exporter_user }}"
+    group: "{{ mysqld_exporter_user }}"
+    mode: "0400"
+    content: |
+      # Managed by Ansible (mysqld_exporter role)
+      [client]
+      user = {{ mysqld_exporter_db_user }}
+      password = {{ vault_mysqld_exporter_pw }}
+      host = localhost
+  notify: restart mysqld_exporter
+  tags: [mysqld_exporter, config]
+
+- name: Download and extract mysqld_exporter
+  ansible.builtin.unarchive:
+    src: "{{ mysqld_exporter_download_url }}"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/mysqld_exporter-{{ mysqld_exporter_version }}.{{ mysqld_exporter_arch }}/mysqld_exporter"
+  tags: [mysqld_exporter, install]
+
+- name: Install the mysqld_exporter binary
+  ansible.builtin.copy:
+    src: "/tmp/mysqld_exporter-{{ mysqld_exporter_version }}.{{ mysqld_exporter_arch }}/mysqld_exporter"
+    dest: /usr/local/bin/mysqld_exporter
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  notify: restart mysqld_exporter
+  tags: [mysqld_exporter, install]
+
+- name: Deploy the mysqld_exporter systemd unit
+  ansible.builtin.template:
+    src: mysqld_exporter.service.j2
+    dest: /etc/systemd/system/mysqld_exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart mysqld_exporter
+  tags: [mysqld_exporter, service]
+
+- name: Enable and start mysqld_exporter
+  ansible.builtin.systemd:
+    name: mysqld_exporter
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: not mysqld_exporter_in_container
+  tags: [mysqld_exporter, service]
+
+- name: Is firewalld running?
+  ansible.builtin.command: systemctl is-active firewalld
+  register: mysqld_exporter_firewalld
+  changed_when: false
+  failed_when: false
+  tags: [mysqld_exporter, firewall]
+
+- name: Allow the scraper (obs1) to reach mysqld_exporter
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ mysqld_exporter_scraper_ip }} port port={{ mysqld_exporter_port }} protocol=tcp accept"
+    permanent: true
+    immediate: "{{ mysqld_exporter_firewalld.stdout == 'active' }}"
+    state: enabled
+  when: not mysqld_exporter_in_container
+  tags: [mysqld_exporter, firewall]

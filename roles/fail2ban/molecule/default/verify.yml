@@ -1,0 +1,11 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: platform jail config present
+      ansible.builtin.command: grep -q "\[sshd\]" /etc/fail2ban/jail.d/10-platform.local
+      changed_when: false
+    - name: fail2ban config test passes
+      ansible.builtin.command: fail2ban-client -t
+      changed_when: false

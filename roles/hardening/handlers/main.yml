@@ -1,0 +1,9 @@
+---
+- name: reload sshd
+  ansible.builtin.service:
+    name: sshd
+    state: reloaded
+
+- name: reload sysctl
+  ansible.builtin.command: sysctl --system
+  changed_when: false

@@ -1,0 +1,63 @@
+# {{ ansible_managed }}
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    platform: "{{ domain }}"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "{{ prometheus_alertmanager }}"
+
+rule_files:
+  - "{{ prometheus_rules_dir }}/*.yml"
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:{{ prometheus_port }}"]
+
+  - job_name: node
+    static_configs:
+{% for h in groups['all'] | sort %}
+      - targets: ["{{ h }}:{{ prometheus_node_port }}"]
+        labels:
+          instance: "{{ h }}"
+          tier: "{{ (h in groups['edge']) | ternary('edge', (h in groups['web']) | ternary('web', (h in groups['data']) | ternary('data', (h in groups['obs']) | ternary('obs', 'mail')))) }}"
+{% endfor %}
+
+  - job_name: nginx
+    static_configs:
+{% for h in (groups['web'] + groups['edge']) | sort %}
+      - targets: ["{{ h }}:{{ prometheus_nginx_port }}"]
+        labels:
+          instance: "{{ h }}"
+{% endfor %}
+
+  - job_name: mysqld
+    static_configs:
+{% for h in groups['data'] | sort %}
+      - targets: ["{{ h }}:{{ prometheus_mysqld_port }}"]
+        labels:
+          instance: "{{ h }}"
+{% endfor %}
+
+  # Blackbox: probe the VIP over HTTPS end-to-end (user-facing availability).
+  - job_name: blackbox_vip
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - "https://{{ blackbox_probe_host | default('app.platform.lab') }}/healthz"
+        labels:
+          instance: "vip"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: probe_url
+      - target_label: __address__
+        replacement: "127.0.0.1:{{ blackbox_exporter_port | default(9115) }}"

@@ -1,0 +1,15 @@
+---
+# base role defaults — override in group_vars / host_vars
+base_manage_network: true       # false = leave NIC pre-set, skip nmcli entirely
+base_nmcli_conn: ""             # blank = use the detected default interface
+base_timezone: "Europe/Paris"
+base_enable_epel: true
+base_selinux_state: enforcing
+base_packages:
+  - chrony
+  - firewalld
+  - policycoreutils-python-utils
+  - vim
+  - curl
+  - tar
+  - jq

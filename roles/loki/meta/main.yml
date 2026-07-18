@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: loki
+  author: mcsredhat
+  description: Grafana Loki (single-node, filesystem storage, 7d retention) on obs1
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: ["9"]
+  galaxy_tags: [rhel, loki, logging, monitoring, observability]
+dependencies: []

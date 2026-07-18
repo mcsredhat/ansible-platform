@@ -1,0 +1,78 @@
+groups:
+  - name: log-alerts
+    rules:
+      - alert: NginxHigh5xxRate
+        expr: |
+          sum by (instance) (rate({job="nginx-access"} |~ `" 5\d\d ` [5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated nginx 5xx rate on {{ $labels.instance }}"
+          description: "nginx is returning 5xx responses at more than 1/s over 5m on {{ $labels.instance }}."
+
+      - alert: Fail2banBanSurge
+        expr: |
+          sum by (instance) (count_over_time({job="journald", unit="fail2ban.service"} |= "Ban " [10m])) > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "fail2ban ban surge on {{ $labels.instance }}"
+          description: "More than 5 bans in 10 minutes on {{ $labels.instance }} — possible attack or misconfiguration."
+
+      - alert: SshAuthFailureSpike
+        expr: |
+          sum by (instance) (count_over_time({job="journald"} |= "Failed password" [5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SSH auth failure spike on {{ $labels.instance }}"
+          description: "More than 10 failed SSH logins in 5 minutes on {{ $labels.instance }} — possible brute-force."
+
+  - name: security-alerts
+    rules:
+      - alert: SudoFailure
+        expr: |
+          sum by (instance) (count_over_time({job="journald"} |= "sudo" |~ "authentication failure|incorrect password" [5m])) > 3
+        for: 1m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Repeated sudo failures on {{ $labels.instance }}"
+          description: "More than 3 sudo authentication failures in 5m on {{ $labels.instance }} — possible privilege-escalation attempt."
+
+      - alert: SelinuxAvcDenial
+        expr: |
+          sum by (instance) (count_over_time({job="journald"} |~ "avc:  ?denied" [10m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "SELinux AVC denial on {{ $labels.instance }}"
+          description: "SELinux denied an operation on {{ $labels.instance }} — investigate policy violation or intrusion attempt."
+
+      - alert: InvalidSshUser
+        expr: |
+          sum by (instance) (count_over_time({job="journald"} |= "Invalid user" [5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "SSH probing with invalid usernames on {{ $labels.instance }}"
+          description: "More than 5 invalid-user SSH attempts in 5m on {{ $labels.instance }} — automated scanning or brute-force."
+
+      - alert: SensitiveFileChange
+        expr: |
+          sum by (instance) (count_over_time({job="journald"} |~ "/etc/(passwd|shadow|sudoers|ssh/sshd_config)" |~ "audit|type=PATH|type=SYSCALL" [10m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Sensitive file modified on {{ $labels.instance }}"
+          description: "An audit event touched a sensitive file (passwd/shadow/sudoers/sshd_config) on {{ $labels.instance }}."

@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+[server]
+http_port = {{ grafana_port }}
+
+[security]
+# Real password is set once via `grafana-cli admin reset-admin-password`
+# (see tasks/main.yml) — this only seeds a throwaway default at first boot.
+admin_user = admin
+
+[users]
+allow_sign_up = false
+
+[analytics]
+reporting_enabled = false
+check_for_updates = false

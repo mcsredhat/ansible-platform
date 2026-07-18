@@ -1,0 +1,12 @@
+---
+# redis role defaults — shared cache (00-architecture §3.2)
+# Lives on the data tier; both web nodes (WP object cache) and mail (Rspamd) use it.
+redis_conf: /etc/redis/redis.conf
+redis_bind: "127.0.0.1 {{ node_ip | default('127.0.0.1') }}"
+redis_port: 6379
+redis_protected_mode: "yes"
+redis_password: "{{ vault_redis_pw }}"
+redis_maxmemory: "256mb"
+redis_maxmemory_policy: "allkeys-lru"      # cache-oriented eviction
+redis_rename_dangerous: true               # disable FLUSHALL (FLUSHDB kept: WP object cache needs it)
+redis_allowed_subnet: "{{ subnet | default('192.168.1.0/24') }}"

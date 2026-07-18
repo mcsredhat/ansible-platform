@@ -1,0 +1,7 @@
+---
+# Phase 5 — MariaDB metrics on the data tier.
+- name: Provision mysqld_exporter
+  hosts: data
+  become: true
+  roles:
+    - mysqld_exporter

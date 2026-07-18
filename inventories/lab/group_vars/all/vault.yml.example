@@ -1,0 +1,15 @@
+---
+# Copy to vault.yml then encrypt:
+#   cp vault.yml.example vault.yml
+#   ansible-vault encrypt inventories/lab/group_vars/all/vault.yml
+# Reference as e.g.  mariadb_wp_pw: "{{ vault_mariadb_wp_pw }}"
+
+# Red Hat registration (activation key + org ID — create at
+# https://console.redhat.com -> Activation Keys; org ID is shown there)
+vault_rhsm_org_id: "YOUR_ORG_ID"
+vault_rhsm_activation_key: "YOUR_ACTIVATION_KEY"
+
+# Application secrets (filled in later phases)
+vault_mariadb_wp_pw: "CHANGE_ME_strong_pw"
+vault_restic_pw: "CHANGE_ME_restic_pw"
+vault_redis_pw: "CHANGE_ME_redis_pw"

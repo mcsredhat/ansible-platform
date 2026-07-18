@@ -1,0 +1,17 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    # the mount itself is skipped in containers; verify the prerequisites the role sets up
+    - name: webdata exists
+      ansible.builtin.command: id webdata
+      changed_when: false
+    - name: mount point exists with setgid
+      ansible.builtin.stat:
+        path: /var/www/wordpress/wp-content/uploads
+      register: mp
+    - ansible.builtin.assert:
+        that:
+          - mp.stat.exists
+          - mp.stat.uid == 1980

@@ -1,0 +1,28 @@
+---
+# php_fpm role — PHP 8.2 FPM for WordPress (00-architecture §4.2)
+# Reconciled from the web1/web2 manual builds: pool runs as webdata (1980), not a
+# UID-pinned nginx. Redis object cache uses Predis (pure PHP) in the wordpress role,
+# not the EPEL phpredis extension (ABI-incompatible with the php:8.2 module).
+php_stream: "8.2"
+php_packages:
+  - php-fpm
+  - php-cli            # php-fpm alone does NOT provide the `php` CLI (manual gotcha #1)
+  - php-mysqlnd
+  - php-gd
+  - php-mbstring
+  - php-xml
+  - php-intl
+  - php-opcache
+  - php-pecl-zip
+  - php-process
+  # NOTE: NO php-pecl-redis here. EPEL's php-pecl-redis5 is built against RHEL's
+  # base PHP 8.0 (php-api 20200930) and conflicts with the php:8.2 module stream.
+  # The wordpress role uses Predis (pure-PHP client, bundled with the redis-cache
+  # plugin) instead — same Redis object cache, no ABI clash, no third-party repo.
+
+php_pool_conf: /etc/php-fpm.d/www.conf
+php_pool_user: "webdata"
+php_pool_group: "webdata"
+php_listen_owner: "webdata"
+php_listen_group: "nginx"      # nginx connects to the FPM socket
+php_listen_mode: "0660"

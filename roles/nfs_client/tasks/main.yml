@@ -1,0 +1,61 @@
+---
+# nfs_client — boot-safe shared uploads mount + SELinux (00-architecture §4.3)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    nfs_client_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Install NFS utilities
+  ansible.builtin.dnf:
+    name: nfs-utils
+    state: present
+  tags: [nfs, packages]
+
+# --- shared identity (self-sufficient: the mount dir is owned by webdata) ---
+- name: Ensure the webdata group exists (gid {{ webdata_gid | default(1980) }})
+  ansible.builtin.group:
+    name: webdata
+    gid: "{{ webdata_gid | default(1980) }}"
+    state: present
+  tags: [nfs, identity]
+
+- name: Ensure the webdata user exists (uid {{ webdata_uid | default(1980) }})
+  ansible.builtin.user:
+    name: webdata
+    uid: "{{ webdata_uid | default(1980) }}"
+    group: webdata
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+    state: present
+  tags: [nfs, identity]
+
+- name: Create the uploads mount point
+  ansible.builtin.file:
+    path: "{{ nfs_mount_point }}"
+    state: directory
+    owner: webdata
+    group: webdata
+    mode: "2775"
+  tags: [nfs, mount]
+
+# --- SELinux: httpd must read/write an NFS-backed docroot ------------------
+- name: Allow httpd to use NFS (SELinux)
+  ansible.posix.seboolean:
+    name: httpd_use_nfs
+    state: true
+    persistent: true
+  when: not nfs_client_in_container
+  tags: [nfs, selinux]
+
+- name: Mount the shared uploads export (and persist to fstab)
+  ansible.posix.mount:
+    path: "{{ nfs_mount_point }}"
+    src: "{{ nfs_server_host }}:{{ nfs_server_export }}"
+    fstype: nfs
+    opts: "{{ nfs_mount_opts }}"
+    state: mounted
+  when: not nfs_client_in_container
+  tags: [nfs, mount]

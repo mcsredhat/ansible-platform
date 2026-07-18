@@ -1,0 +1,7 @@
+---
+# Phase 2 entry play — host-level performance tuning on every node.
+- name: Apply performance tuning to all nodes
+  hosts: all
+  become: true
+  roles:
+    - tuning

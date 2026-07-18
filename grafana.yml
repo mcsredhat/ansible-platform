@@ -1,0 +1,7 @@
+---
+# Phase 5 — dashboards on obs1.
+- name: Provision Grafana
+  hosts: obs
+  become: true
+  roles:
+    - grafana

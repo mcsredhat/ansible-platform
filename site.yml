@@ -1,0 +1,92 @@
+---
+# Master orchestration — full platform deploy (00-architecture §9).
+#
+# Prerequisite (run once, manually, before this playbook):
+#   ansible-playbook bootstrap.yml   # RHSM registration + deploy user + keys
+#
+# Then the entire HA WordPress platform builds end to end with:
+#   ansible-playbook site.yml
+
+# ---------------------------------------------------------------------------
+# Phase 1-2 — Foundation (all nodes)
+# ---------------------------------------------------------------------------
+- name: Import base foundation
+  ansible.builtin.import_playbook: base.yml
+- name: Import preventive hardening
+  ansible.builtin.import_playbook: hardening.yml
+- name: Import performance tuning
+  ansible.builtin.import_playbook: tuning.yml
+- name: Import detective auditing
+  ansible.builtin.import_playbook: audit.yml
+
+# ---------------------------------------------------------------------------
+# Phase 3 — Data tier (data1)
+# ---------------------------------------------------------------------------
+- name: Import MariaDB
+  ansible.builtin.import_playbook: mariadb.yml
+- name: Import Redis
+  ansible.builtin.import_playbook: redis.yml
+- name: Import NFS server
+  ansible.builtin.import_playbook: nfs_server.yml
+- name: Import restic backups
+  ansible.builtin.import_playbook: restic_backup.yml
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Web tier (web1, web2)
+# nginx_common installs the nginx baseline on web AND edge, so it runs first.
+# ---------------------------------------------------------------------------
+- name: Import nginx baseline (web + edge)
+  ansible.builtin.import_playbook: nginx_common.yml
+- name: Import PHP-FPM
+  ansible.builtin.import_playbook: php_fpm.yml
+- name: Import shared uploads mount
+  ansible.builtin.import_playbook: nfs_client.yml
+- name: Import WordPress
+  ansible.builtin.import_playbook: wordpress.yml
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Edge tier (edge1, edge2)
+# ---------------------------------------------------------------------------
+- name: Import nginx edge (TLS + load balancer)
+  ansible.builtin.import_playbook: nginx_edge.yml
+- name: Import keepalived (floating VIP)
+  ansible.builtin.import_playbook: keepalived.yml
+
+# ---------------------------------------------------------------------------
+# Security — fail2ban last: nginx jails require nginx already installed
+# on the web/edge tiers (sshd jail applies fleet-wide).
+# ---------------------------------------------------------------------------
+- name: Import fail2ban
+  ansible.builtin.import_playbook: fail2ban.yml
+
+# ---------------------------------------------------------------------------
+# Phase 5d — SecOps: activate detective controls into metrics + logs
+# ---------------------------------------------------------------------------
+- name: Import SecOps signals
+  ansible.builtin.import_playbook: secops.yml
+
+# ---------------------------------------------------------------------------
+# Phase 5 — Observability
+# Server stack (obs1) first — alertmanager before prometheus, since
+# prometheus.yml.j2 points at it. Exporters last, since they need their
+# target services (nginx, mariadb) already running, which they are by now.
+# ---------------------------------------------------------------------------
+- name: Import Alertmanager
+  ansible.builtin.import_playbook: alertmanager.yml
+- name: Import Prometheus
+  ansible.builtin.import_playbook: prometheus.yml
+- name: Import blackbox_exporter (VIP synthetic probe)
+  ansible.builtin.import_playbook: blackbox_exporter.yml
+- name: Import Loki
+  ansible.builtin.import_playbook: loki.yml
+- name: Import Grafana
+  ansible.builtin.import_playbook: grafana.yml
+
+- name: Import node_exporter (fleet)
+  ansible.builtin.import_playbook: node_exporter.yml
+- name: Import nginx_exporter (web + edge)
+  ansible.builtin.import_playbook: nginx_exporter.yml
+- name: Import mysqld_exporter (data)
+  ansible.builtin.import_playbook: mysqld_exporter.yml
+- name: Import promtail (fleet)
+  ansible.builtin.import_playbook: promtail.yml

@@ -1,0 +1,29 @@
+---
+role_name_check: 1
+dependency:
+  name: galaxy
+  options:
+    requirements-file: ../../../../requirements.yml
+driver:
+  name: podman
+platforms:
+  - name: mariadb-el9
+    image: quay.io/rockylinux/rockylinux:9
+    command: /usr/sbin/init
+    systemd: always
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      mariadb-el9:
+        node_ip: "192.168.1.31"
+    group_vars:
+      all:
+        mariadb_wp_password: "molecule_test_pw"   # bypass vault in CI
+        subnet: "192.168.1.0/24"
+verifier:
+  name: ansible

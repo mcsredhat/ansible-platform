@@ -1,0 +1,7 @@
+---
+# Phase 4 — TLS reverse proxy + load balancer on the edge tier.
+- name: Provision the nginx edge
+  hosts: edge
+  become: true
+  roles:
+    - nginx_edge

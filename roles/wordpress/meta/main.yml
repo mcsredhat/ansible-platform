@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: wordpress
+  author: mcsredhat
+  description: WordPress app (proxy-aware, Redis object cache, blue/green vhost) on RHEL 9
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - wordpress
+    - web
+dependencies: []

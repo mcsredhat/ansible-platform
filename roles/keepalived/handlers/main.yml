@@ -1,0 +1,6 @@
+---
+- name: restart keepalived
+  ansible.builtin.service:
+    name: keepalived
+    state: restarted
+  when: not (keepalived_in_container | default(false))

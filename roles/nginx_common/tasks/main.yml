@@ -1,0 +1,55 @@
+---
+# nginx_common — install + harden the nginx baseline (00-architecture §4.1)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    nginx_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Install nginx
+  ansible.builtin.dnf:
+    name: nginx
+    state: present
+  tags: [nginx, packages]
+
+- name: Create the snippets directory
+  ansible.builtin.file:
+    path: /etc/nginx/snippets
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [nginx, config]
+
+- name: Deploy reusable snippets (security headers, TLS params)
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/nginx/snippets/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - security-headers.conf
+    - ssl-params.conf
+  notify: reload nginx
+  tags: [nginx, config]
+
+- name: Deploy the main nginx.conf (validated before activation)
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "/usr/sbin/nginx -t -c %s"
+  notify: reload nginx
+  tags: [nginx, config]
+
+- name: Enable and start nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  when: not nginx_in_container
+  tags: [nginx, service]

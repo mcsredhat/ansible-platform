@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: alertmanager
+  author: mcsredhat
+  description: Prometheus Alertmanager with local receiver (email stub for Phase 6)
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: ["9"]
+  galaxy_tags: [rhel, prometheus, alerting, monitoring, observability]
+dependencies: []

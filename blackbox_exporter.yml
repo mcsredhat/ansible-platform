@@ -1,0 +1,7 @@
+---
+# Phase 5c — external synthetic probing of the VIP from obs1.
+- name: Provision blackbox_exporter
+  hosts: obs
+  become: true
+  roles:
+    - blackbox_exporter

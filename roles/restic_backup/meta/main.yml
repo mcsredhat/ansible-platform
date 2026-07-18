@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: restic_backup
+  author: mcsredhat
+  description: Scheduled, monitored, off-host restic backups for the WordPress data tier (RHEL 9)
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - backup
+    - restic
+    - dr
+dependencies: []

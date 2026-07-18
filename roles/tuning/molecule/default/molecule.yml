@@ -1,0 +1,27 @@
+---
+role_name_check: 1
+dependency:
+  name: galaxy
+  options:
+    requirements-file: ../../../../requirements.yml
+driver:
+  name: podman
+platforms:
+  - name: tuning-el9
+    image: quay.io/rockylinux/rockylinux:9
+    command: /usr/sbin/init
+    systemd: always
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        tuning_tuned: false        # tuned/THP/sysctl are kernel-level, skipped in containers
+        tuning_disable_thp: false
+        tuning_sysctl: false
+verifier:
+  name: ansible

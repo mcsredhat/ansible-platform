@@ -1,0 +1,75 @@
+---
+# blackbox_exporter — pinned binary + systemd; probes the VIP over HTTPS
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    blackbox_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Create the blackbox_exporter system user
+  ansible.builtin.user:
+    name: "{{ blackbox_exporter_user }}"
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+  tags: [blackbox_exporter, user]
+
+- name: Create the config directory
+  ansible.builtin.file:
+    path: "{{ blackbox_exporter_config_dir }}"
+    state: directory
+    owner: "{{ blackbox_exporter_user }}"
+    group: "{{ blackbox_exporter_user }}"
+    mode: "0755"
+  tags: [blackbox_exporter, config]
+
+- name: Download and extract blackbox_exporter
+  ansible.builtin.unarchive:
+    src: "{{ blackbox_exporter_download_url }}"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/blackbox_exporter-{{ blackbox_exporter_version }}.{{ blackbox_exporter_arch }}/blackbox_exporter"
+  tags: [blackbox_exporter, install]
+
+- name: Install the blackbox_exporter binary
+  ansible.builtin.copy:
+    src: "/tmp/blackbox_exporter-{{ blackbox_exporter_version }}.{{ blackbox_exporter_arch }}/blackbox_exporter"
+    dest: /usr/local/bin/blackbox_exporter
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  notify: restart blackbox_exporter
+  tags: [blackbox_exporter, install]
+
+- name: Deploy the blackbox_exporter configuration
+  ansible.builtin.template:
+    src: blackbox.yml.j2
+    dest: "{{ blackbox_exporter_config_dir }}/blackbox.yml"
+    owner: "{{ blackbox_exporter_user }}"
+    group: "{{ blackbox_exporter_user }}"
+    mode: "0644"
+  notify: restart blackbox_exporter
+  tags: [blackbox_exporter, config]
+
+- name: Deploy the blackbox_exporter systemd unit
+  ansible.builtin.template:
+    src: blackbox_exporter.service.j2
+    dest: /etc/systemd/system/blackbox_exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart blackbox_exporter
+  tags: [blackbox_exporter, service]
+
+- name: Enable and start blackbox_exporter
+  ansible.builtin.systemd:
+    name: blackbox_exporter
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: not blackbox_in_container
+  tags: [blackbox_exporter, service]

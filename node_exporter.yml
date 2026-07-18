@@ -1,0 +1,7 @@
+---
+# Phase 5 — host metrics exporter on every node.
+- name: Provision node_exporter
+  hosts: all
+  become: true
+  roles:
+    - node_exporter

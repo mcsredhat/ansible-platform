@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  role_name: audit
+  author: mcsredhat
+  description: Detective security controls (auditd CIS rules, AIDE, OpenSCAP) for RHEL 9
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - security
+    - audit
+    - cis
+    - compliance
+dependencies: []

@@ -1,0 +1,7 @@
+---
+# Phase 5 — alert routing on obs1.
+- name: Provision Alertmanager
+  hosts: obs
+  become: true
+  roles:
+    - alertmanager

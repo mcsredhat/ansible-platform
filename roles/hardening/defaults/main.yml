@@ -1,0 +1,63 @@
+---
+# hardening role defaults (preventive controls) — override in group_vars/host_vars
+
+# --- SSH ---
+hardening_ssh: true
+hardening_ssh_permit_root_login: "no"
+hardening_ssh_password_authentication: "no"   # safe: deploy uses key auth; console remains
+hardening_ssh_max_auth_tries: 4
+hardening_ssh_client_alive_interval: 300
+hardening_ssh_client_alive_count_max: 2
+hardening_ssh_login_grace_time: 30
+hardening_ssh_x11_forwarding: "no"
+hardening_ssh_allow_users: []                 # empty = no AllowUsers restriction (avoids lockout)
+hardening_ssh_ciphers: "chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
+hardening_ssh_macs: "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com"
+hardening_ssh_kex: "curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512"
+
+# --- account lockout (pam_faillock via authselect) ---
+hardening_faillock: true
+hardening_faillock_deny: 5
+hardening_faillock_unlock_time: 900
+hardening_faillock_fail_interval: 900
+
+# --- password quality (pam_pwquality) ---
+hardening_pwquality: true
+hardening_pwquality_minlen: 14
+hardening_pwquality_dcredit: -1
+hardening_pwquality_ucredit: -1
+hardening_pwquality_lcredit: -1
+hardening_pwquality_ocredit: -1
+hardening_pwquality_minclass: 4
+hardening_pwquality_retry: 3
+
+# --- password aging + umask (login.defs) ---
+hardening_login_defs: true
+hardening_pass_max_days: 90
+hardening_pass_min_days: 1
+hardening_pass_warn_age: 7
+hardening_umask: "027"
+
+# --- sudo command logging ---
+hardening_sudo_logging: true
+
+# --- security sysctls ---
+hardening_sysctl: true
+hardening_sysctl_settings:
+  net.ipv4.conf.all.rp_filter: 1
+  net.ipv4.conf.default.rp_filter: 1
+  net.ipv4.tcp_syncookies: 1
+  net.ipv4.conf.all.accept_redirects: 0
+  net.ipv4.conf.default.accept_redirects: 0
+  net.ipv6.conf.all.accept_redirects: 0
+  net.ipv4.conf.all.send_redirects: 0
+  net.ipv4.conf.default.send_redirects: 0
+  net.ipv4.conf.all.accept_source_route: 0
+  net.ipv4.conf.default.accept_source_route: 0
+  net.ipv4.conf.all.log_martians: 1
+  net.ipv4.icmp_echo_ignore_broadcasts: 1
+  net.ipv4.icmp_ignore_bogus_error_responses: 1
+  kernel.randomize_va_space: 2
+  kernel.kptr_restrict: 2
+  kernel.dmesg_restrict: 1
+  fs.suid_dumpable: 0

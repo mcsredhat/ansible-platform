@@ -1,0 +1,17 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: nginx config is valid
+      ansible.builtin.command: nginx -t
+      changed_when: false
+    - name: server_tokens disabled
+      ansible.builtin.command: grep -q "server_tokens       off" /etc/nginx/nginx.conf
+      changed_when: false
+    - name: snippets present
+      ansible.builtin.stat:
+        path: "/etc/nginx/snippets/{{ item }}"
+      loop:
+        - security-headers.conf
+        - ssl-params.conf

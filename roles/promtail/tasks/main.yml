@@ -1,0 +1,97 @@
+---
+# promtail — pinned binary + systemd, ships journald (+ nginx logs on web/edge)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    promtail_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Create the promtail system user (member of adm + systemd-journal for log read access)
+  ansible.builtin.user:
+    name: "{{ promtail_user }}"
+    system: true
+    shell: /sbin/nologin
+    groups: systemd-journal,adm
+    append: true
+    create_home: false
+  tags: [promtail, user]
+
+- name: Create promtail directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_user }}"
+    mode: "0755"
+  loop:
+    - "{{ promtail_config_dir }}"
+    - "{{ promtail_positions_dir }}"
+  tags: [promtail, config]
+
+- name: Ensure unzip is present (promtail ships as a .zip)
+  ansible.builtin.dnf:
+    name: unzip
+    state: present
+  tags: [promtail, install]
+
+- name: Download and extract promtail
+  ansible.builtin.unarchive:
+    src: "{{ promtail_download_url }}"
+    dest: /tmp
+    remote_src: true
+    creates: "/tmp/promtail-{{ promtail_arch }}"
+  tags: [promtail, install]
+
+- name: Install the promtail binary
+  ansible.builtin.copy:
+    src: "/tmp/promtail-{{ promtail_arch }}"
+    dest: /usr/local/bin/promtail
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  notify: restart promtail
+  tags: [promtail, install]
+
+- name: Deploy the promtail configuration
+  ansible.builtin.template:
+    src: promtail-config.yml.j2
+    dest: "{{ promtail_config_dir }}/promtail-config.yml"
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_user }}"
+    mode: "0644"
+  notify: restart promtail
+  tags: [promtail, config]
+
+- name: Allow promtail to read nginx logs (ACL, web/edge only)
+  ansible.posix.acl:
+    path: /var/log/nginx
+    entity: "{{ promtail_user }}"
+    etype: user
+    permissions: rx
+    state: present
+    recursive: true
+  when: inventory_hostname in (groups['web'] + groups['edge'])
+  tags: [promtail, config]
+
+- name: Deploy the promtail systemd unit
+  ansible.builtin.template:
+    src: promtail.service.j2
+    dest: /etc/systemd/system/promtail.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart promtail
+  tags: [promtail, service]
+
+- name: Enable and start promtail
+  ansible.builtin.systemd:
+    name: promtail
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: not promtail_in_container
+  tags: [promtail, service]

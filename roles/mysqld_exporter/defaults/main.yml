@@ -1,0 +1,15 @@
+---
+# mysqld_exporter — MariaDB metrics (data1, Phase 5)
+mysqld_exporter_version: "0.15.1"
+mysqld_exporter_arch: "linux-amd64"
+mysqld_exporter_user: mysqld_exporter
+mysqld_exporter_port: 9104
+
+# Dedicated read-only MySQL account for the exporter (least privilege).
+mysqld_exporter_db_user: exporter
+# Password comes from vault: vault_mysqld_exporter_pw
+
+mysqld_exporter_scraper_ip: "192.168.1.41"
+
+mysqld_exporter_download_url: >-
+  https://github.com/prometheus/mysqld_exporter/releases/download/v{{ mysqld_exporter_version }}/mysqld_exporter-{{ mysqld_exporter_version }}.{{ mysqld_exporter_arch }}.tar.gz

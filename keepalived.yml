@@ -1,0 +1,7 @@
+---
+# Phase 4 — floating VIP across the edge pair.
+- name: Provision keepalived (VIP)
+  hosts: edge
+  become: true
+  roles:
+    - keepalived

@@ -1,0 +1,5 @@
+---
+- name: reload exports
+  ansible.builtin.command: exportfs -ra
+  changed_when: true
+  when: not (nfs_in_container | default(false))

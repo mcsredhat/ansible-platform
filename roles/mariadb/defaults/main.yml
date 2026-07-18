@@ -1,0 +1,25 @@
+---
+# mariadb role defaults — data tier (00-architecture §3.2)
+mariadb_packages:
+  - mariadb-server
+  - mariadb
+  - python3-PyMySQL
+mariadb_bind_address: "0.0.0.0"
+mariadb_max_connections: 200
+# buffer pool sized to host RAM, NOT hardcoded
+mariadb_buffer_pool: "{{ ((ansible_facts['memtotal_mb'] | default(1024)) * 0.5) | int }}M"
+mariadb_socket: /var/lib/mysql/mysql.sock
+
+# binary logging for point-in-time recovery (PITR)
+mariadb_binlog: true
+mariadb_server_id: "{{ (node_ip | default('0.0.0.1')).split('.')[-1] | int }}"
+mariadb_binlog_expire_days: 7
+
+# WordPress database + network-scoped user
+mariadb_wp_db: wordpress
+mariadb_wp_user: wp_user
+mariadb_wp_user_host: "192.168.1.%"
+mariadb_wp_password: "{{ vault_mariadb_wp_pw }}"
+
+# firewall: which source subnet may reach 3306
+mariadb_allowed_subnet: "{{ subnet | default('192.168.1.0/24') }}"

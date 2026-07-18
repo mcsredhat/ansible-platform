@@ -1,0 +1,15 @@
+---
+# blackbox_exporter — external synthetic probing from obs1 (Phase 5c)
+blackbox_exporter_version: "0.25.0"
+blackbox_exporter_arch: "linux-amd64"
+blackbox_exporter_user: blackbox_exporter
+blackbox_exporter_port: 9115
+
+blackbox_exporter_config_dir: /etc/blackbox_exporter
+
+# The VIP + vhost to probe (the real user-facing entrypoint).
+blackbox_probe_vip: "192.168.1.10"
+blackbox_probe_host: "app.platform.lab"
+
+blackbox_exporter_download_url: >-
+  https://github.com/prometheus/blackbox_exporter/releases/download/v{{ blackbox_exporter_version }}/blackbox_exporter-{{ blackbox_exporter_version }}.{{ blackbox_exporter_arch }}.tar.gz

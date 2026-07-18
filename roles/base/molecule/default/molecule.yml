@@ -1,0 +1,36 @@
+---
+role_name_check: 1
+dependency:
+  name: galaxy
+  options:
+    requirements-file: ../../../../requirements.yml
+driver:
+  name: podman
+platforms:
+  - name: base-el9
+    image: quay.io/rockylinux/rockylinux:9
+    command: /usr/sbin/init
+    systemd: always
+    privileged: true
+    capabilities:
+      - SYS_ADMIN
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      base-el9:
+        node_ip: "192.168.1.99"
+    group_vars:
+      all:
+        base_manage_network: false   # no nmcli inside a container
+        base_prefix: 24
+        gateway: "192.168.1.254"
+        dns_server: "192.168.1.254"
+        platform_hosts:
+          - { ip: "192.168.1.11", names: "edge1.platform.lab edge1" }
+          - { ip: "192.168.1.31", names: "data1.platform.lab data1" }
+verifier:
+  name: ansible

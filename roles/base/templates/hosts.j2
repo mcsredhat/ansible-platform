@@ -1,0 +1,6 @@
+# Managed by Ansible (base role) — do not edit by hand
+127.0.0.1   localhost localhost.localdomain localhost4
+::1         localhost localhost.localdomain localhost6
+{% for h in platform_hosts %}
+{{ h.ip }}  {{ h.names }}
+{% endfor %}

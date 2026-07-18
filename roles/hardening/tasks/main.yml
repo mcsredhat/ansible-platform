@@ -1,0 +1,105 @@
+---
+# hardening — preventive security controls (00-architecture §4.1)
+
+- name: Detect container runtime (skip kernel-level tasks)
+  ansible.builtin.set_fact:
+    hardening_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+# --- SSH hardening (drop-in, validated so a bad config can't be written) ---
+- name: Deploy hardened sshd drop-in
+  ansible.builtin.template:
+    src: sshd-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/00-hardening.conf
+    owner: root
+    group: root
+    mode: "0600"
+    validate: "sshd -t -f %s"
+  when: hardening_ssh | bool
+  notify: reload sshd
+  tags: [hardening, ssh]
+
+# --- account lockout: faillock.conf + enable via authselect ---------------
+- name: Configure faillock.conf
+  ansible.builtin.template:
+    src: faillock.conf.j2
+    dest: /etc/security/faillock.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: hardening_faillock | bool
+  tags: [hardening, pam]
+
+- name: Get current authselect profile
+  ansible.builtin.command: authselect current
+  register: hardening_authselect
+  changed_when: false
+  failed_when: false
+  when: hardening_faillock | bool
+  tags: [hardening, pam]
+
+- name: Enable faillock feature via authselect
+  ansible.builtin.command: authselect enable-feature with-faillock
+  when:
+    - hardening_faillock | bool
+    - hardening_authselect.rc | default(1) == 0
+    - "'with-faillock' not in (hardening_authselect.stdout | default(''))"
+  changed_when: true
+  tags: [hardening, pam]
+
+# --- password quality -----------------------------------------------------
+- name: Configure pwquality
+  ansible.builtin.template:
+    src: pwquality.conf.j2
+    dest: /etc/security/pwquality.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: hardening_pwquality | bool
+  tags: [hardening, pam]
+
+# --- password aging + umask (login.defs) ----------------------------------
+- name: Set login.defs password policy
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: "^#?\\s*{{ item.key }}\\b"
+    line: "{{ item.key }}\t{{ item.value }}"
+    state: present
+  loop: "{{ login_defs_map | dict2items }}"
+  vars:
+    login_defs_map:
+      PASS_MAX_DAYS: "{{ hardening_pass_max_days }}"
+      PASS_MIN_DAYS: "{{ hardening_pass_min_days }}"
+      PASS_WARN_AGE: "{{ hardening_pass_warn_age }}"
+      UMASK: "{{ hardening_umask }}"
+  when: hardening_login_defs | bool
+  tags: [hardening, login]
+
+# --- sudo command logging (validated drop-in) -----------------------------
+- name: Enable sudo command logging
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/10-logging
+    content: |
+      Defaults logfile="/var/log/sudo.log"
+      Defaults log_year, log_host
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+  when: hardening_sudo_logging | bool
+  tags: [hardening, sudo]
+
+# --- security sysctls -----------------------------------------------------
+- name: Deploy security sysctls
+  ansible.builtin.template:
+    src: sysctl-hardening.conf.j2
+    dest: /etc/sysctl.d/90-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - hardening_sysctl | bool
+    - not hardening_in_container
+  notify: reload sysctl
+  tags: [hardening, sysctl]

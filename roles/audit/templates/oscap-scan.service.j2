@@ -1,0 +1,7 @@
+# Managed by Ansible (audit role)
+[Unit]
+Description=OpenSCAP compliance scan
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/oscap-scan.sh

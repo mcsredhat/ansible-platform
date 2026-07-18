@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: {{ grafana_prometheus_url }}
+    isDefault: true
+    editable: false
+  - name: Loki
+    type: loki
+    access: proxy
+    url: {{ grafana_loki_url }}
+    editable: false

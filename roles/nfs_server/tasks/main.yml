@@ -1,0 +1,78 @@
+---
+# nfs_server — shared media export for blue/green WordPress (00-architecture §3.3)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    nfs_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Install NFS utilities
+  ansible.builtin.dnf:
+    name: nfs-utils
+    state: present
+  tags: [nfs, packages]
+
+# --- the shared identity: webdata 980:980 must exist on server AND clients ---
+- name: Ensure the webdata group exists (gid {{ nfs_webdata_gid }})
+  ansible.builtin.group:
+    name: webdata
+    gid: "{{ nfs_webdata_gid }}"
+    state: present
+  tags: [nfs, identity]
+
+- name: Ensure the webdata user exists (uid {{ nfs_webdata_uid }})
+  ansible.builtin.user:
+    name: webdata
+    uid: "{{ nfs_webdata_uid }}"
+    group: webdata
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+    state: present
+  tags: [nfs, identity]
+
+- name: Create the export directory (setgid so new files inherit the group)
+  ansible.builtin.file:
+    path: "{{ nfs_export_path }}"
+    state: directory
+    owner: webdata
+    group: webdata
+    mode: "2775"
+  tags: [nfs, export]
+
+# --- SELinux: allow NFS to export read-write ------------------------------
+- name: Allow NFS read-write export (SELinux)
+  ansible.posix.seboolean:
+    name: nfs_export_all_rw
+    state: true
+    persistent: true
+  when: not nfs_in_container
+  tags: [nfs, selinux]
+
+- name: Enable and start the NFS server
+  ansible.builtin.service:
+    name: nfs-server
+    state: started
+    enabled: true
+  when: not nfs_in_container
+  tags: [nfs, service]
+
+- name: Deploy the WordPress export definition
+  ansible.builtin.template:
+    src: wordpress.exports.j2
+    dest: /etc/exports.d/wordpress.exports
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload exports
+  tags: [nfs, export]
+
+- name: Open the NFS service in the firewall
+  ansible.posix.firewalld:
+    service: nfs
+    permanent: true
+    immediate: true
+    state: enabled
+  when: not nfs_in_container
+  tags: [nfs, firewall]

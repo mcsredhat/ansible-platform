@@ -1,0 +1,17 @@
+---
+# fail2ban role — network-layer intrusion banning (00-architecture §4.1)
+# Complements faillock: faillock locks the ACCOUNT, fail2ban bans the IP at firewalld.
+fail2ban_bantime: "1h"
+fail2ban_findtime: "10m"
+fail2ban_maxretry: 5
+fail2ban_banaction: "firewallcmd-rich-rules"     # firewalld backend on RHEL 9
+
+# Ignore loopback + the management subnet so a fat-fingered login can't lock YOU
+# (or Ansible) out. In production, narrow this to just the jump/management hosts.
+fail2ban_ignoreip: "127.0.0.1/8 ::1 {{ subnet | default('192.168.1.0/24') }}"
+
+# Default jail set (every node). Tier group_vars extend this (nginx on web/edge,
+# postfix/dovecot on mail). sshd reads journald via the systemd backend.
+fail2ban_jails:
+  - name: sshd
+    backend: systemd

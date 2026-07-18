@@ -1,0 +1,9 @@
+---
+# Phase 1 entry play — apply the foundation to every node.
+# Start small:  ansible-playbook base.yml --limit edge1 --check --diff
+# Then scale:   ansible-playbook base.yml
+- name: Apply base foundation to all nodes
+  hosts: all
+  become: true
+  roles:
+    - base

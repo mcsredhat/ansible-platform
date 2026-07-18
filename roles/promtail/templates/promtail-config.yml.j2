@@ -1,0 +1,39 @@
+# {{ ansible_managed }}
+server:
+  http_listen_port: {{ promtail_port }}
+  grpc_listen_port: 0
+
+positions:
+  filename: {{ promtail_positions_dir }}/positions.yaml
+
+clients:
+  - url: {{ promtail_loki_url }}
+
+scrape_configs:
+  - job_name: journal
+    journal:
+      max_age: 12h
+      labels:
+        job: journald
+        instance: "{{ inventory_hostname }}"
+    relabel_configs:
+      - source_labels: ['__journal__systemd_unit']
+        target_label: unit
+
+{% if inventory_hostname in (groups['web'] + groups['edge']) %}
+  - job_name: nginx-access
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: nginx-access
+          instance: "{{ inventory_hostname }}"
+          __path__: /var/log/nginx/access.log
+
+  - job_name: nginx-error
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: nginx-error
+          instance: "{{ inventory_hostname }}"
+          __path__: /var/log/nginx/error.log
+{% endif %}

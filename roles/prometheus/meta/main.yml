@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: prometheus
+  author: mcsredhat
+  description: Prometheus metrics server with fleet auto-discovery and alert rules (RHEL 9)
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - prometheus
+    - monitoring
+    - observability
+dependencies: []

@@ -1,0 +1,108 @@
+---
+# nginx_edge — TLS termination + least_conn LB with failover (00-architecture §4.5)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    edge_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+# --- TLS material ----------------------------------------------------------
+- name: Create the TLS directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ edge_tls_dir }}", mode: "0755" }
+    - { path: "{{ edge_tls_keydir }}", mode: "0700" }
+  tags: [edge, tls]
+
+- name: Generate a self-signed certificate (lab default)
+  ansible.builtin.command: >
+    openssl req -x509 -nodes -newkey rsa:2048
+    -keyout {{ edge_tls_key }} -out {{ edge_tls_cert }}
+    -days {{ edge_tls_days }} -subj "/CN={{ edge_server_name }}"
+    -addext "subjectAltName=DNS:{{ edge_server_name }},DNS:{{ edge_extra_names }},IP:{{ edge_vip }}"
+  args:
+    creates: "{{ edge_tls_cert }}"
+  when: edge_tls_self_signed | bool
+  notify: reload nginx
+  tags: [edge, tls]
+
+- name: Secure the private key
+  ansible.builtin.file:
+    path: "{{ edge_tls_key }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: edge_tls_self_signed | bool
+  tags: [edge, tls]
+
+# --- upstream + vhost ------------------------------------------------------
+- name: Deploy the upstream definition
+  ansible.builtin.template:
+    src: upstream.conf.j2
+    dest: /etc/nginx/conf.d/00-upstream.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - validate nginx
+    - reload nginx
+  tags: [edge, vhost]
+
+- name: Deploy the edge reverse-proxy vhost
+  ansible.builtin.template:
+    src: app.conf.j2
+    dest: /etc/nginx/conf.d/app.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - validate nginx
+    - reload nginx
+  tags: [edge, vhost]
+
+# --- SELinux: nginx must proxy out to the backends -------------------------
+- name: Allow nginx to relay/connect to backends (SELinux)
+  ansible.posix.seboolean:
+    name: "{{ item }}"
+    state: true
+    persistent: true
+  loop:
+    - httpd_can_network_relay
+    - httpd_can_network_connect
+  when: not edge_in_container
+  tags: [edge, selinux]
+
+- name: Ensure nginx is running
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true
+  when: not edge_in_container
+  tags: [edge, service]
+
+# --- firewall: this is the internet-facing tier ----------------------------
+- name: Is firewalld actually running?
+  ansible.builtin.command: systemctl is-active firewalld
+  register: edge_firewalld
+  changed_when: false
+  failed_when: false
+  when: not edge_in_container
+  tags: [edge, firewall]
+
+- name: Open HTTP + HTTPS publicly
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    permanent: true
+    immediate: "{{ (edge_firewalld.stdout | default('')) == 'active' }}"
+    state: enabled
+  loop:
+    - http
+    - https
+  when: not edge_in_container
+  tags: [edge, firewall]

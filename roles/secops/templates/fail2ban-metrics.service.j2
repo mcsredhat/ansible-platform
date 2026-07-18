@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Emit fail2ban ban metrics for node_exporter
+After=fail2ban.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fail2ban-metrics.sh

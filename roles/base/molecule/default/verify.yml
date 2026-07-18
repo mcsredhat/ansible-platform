@@ -1,0 +1,25 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+
+    - name: Base packages are installed
+      ansible.builtin.assert:
+        that: "'chrony' in ansible_facts.packages and 'jq' in ansible_facts.packages"
+        fail_msg: "expected base packages missing"
+
+    - name: /etc/hosts rendered from the platform map
+      ansible.builtin.command: grep -q "edge1.platform.lab" /etc/hosts
+      changed_when: false
+
+    - name: Hostname was set
+      ansible.builtin.command: hostname
+      register: hn
+      changed_when: false
+
+    - name: Hostname matches inventory
+      ansible.builtin.assert:
+        that: hn.stdout == inventory_hostname

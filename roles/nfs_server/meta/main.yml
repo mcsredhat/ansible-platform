@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: nfs_server
+  author: mcsredhat
+  description: Shared NFS export for WordPress wp-content/uploads (blue/green) on RHEL 9
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - rhel
+    - nfs
+    - storage
+dependencies: []

@@ -1,0 +1,4 @@
+# Managed by Ansible (hardening role)
+{% for k, v in hardening_sysctl_settings.items() %}
+{{ k }} = {{ v }}
+{% endfor %}

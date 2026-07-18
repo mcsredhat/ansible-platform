@@ -1,0 +1,7 @@
+---
+# Phase 3 finale — backups on the data tier.
+- name: Provision restic backups
+  hosts: data
+  become: true
+  roles:
+    - restic_backup

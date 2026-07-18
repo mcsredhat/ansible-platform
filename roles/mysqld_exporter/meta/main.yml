@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: mysqld_exporter
+  author: mcsredhat
+  description: Prometheus mysqld_exporter with least-privilege MySQL account (data tier)
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: ["9"]
+  galaxy_tags: [rhel, prometheus, mariadb, monitoring, observability]
+dependencies: []

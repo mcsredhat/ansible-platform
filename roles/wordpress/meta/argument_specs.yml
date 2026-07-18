@@ -1,0 +1,9 @@
+---
+argument_specs:
+  main:
+    short_description: Deploy and install WordPress on the web tier.
+    options:
+      backend_label:
+        description: Blue/green marker emitted as the X-Backend header (set per host_var).
+        type: str
+        required: true

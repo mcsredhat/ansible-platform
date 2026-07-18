@@ -1,0 +1,7 @@
+---
+- name: reconnect nmcli
+  ansible.builtin.command: >-
+    nmcli connection up
+    {{ base_nmcli_conn | default(ansible_facts['default_ipv4']['interface'], true) }}
+  changed_when: true
+  when: not (base_in_container | default(false))

@@ -1,0 +1,87 @@
+---
+# mariadb — WordPress DB, network bind, hardening, binlog (00-architecture §3.2)
+
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    mariadb_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Install MariaDB + PyMySQL
+  ansible.builtin.dnf:
+    name: "{{ mariadb_packages }}"
+    state: present
+  tags: [mariadb, packages]
+
+- name: Enable and start MariaDB
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+  when: not mariadb_in_container
+  tags: [mariadb, service]
+
+- name: Deploy MariaDB platform config (bind, buffer pool, charset, binlog)
+  ansible.builtin.template:
+    src: zz-platform.cnf.j2
+    dest: /etc/my.cnf.d/zz-platform.cnf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart mariadb
+  tags: [mariadb, config]
+
+# apply the new config before we run DB operations
+- name: Apply config now if it changed
+  ansible.builtin.meta: flush_handlers
+
+# --- idempotent secure-installation ---------------------------------------
+- name: Remove anonymous MariaDB users
+  community.mysql.mysql_user:
+    name: ""
+    host_all: true
+    state: absent
+    login_unix_socket: "{{ mariadb_socket }}"
+  when: not mariadb_in_container
+  tags: [mariadb, hardening]
+
+- name: Remove the test database
+  community.mysql.mysql_db:
+    name: test
+    state: absent
+    login_unix_socket: "{{ mariadb_socket }}"
+  when: not mariadb_in_container
+  tags: [mariadb, hardening]
+
+# --- WordPress database + network user ------------------------------------
+- name: Create the WordPress database
+  community.mysql.mysql_db:
+    name: "{{ mariadb_wp_db }}"
+    encoding: utf8mb4
+    collation: utf8mb4_unicode_ci
+    state: present
+    login_unix_socket: "{{ mariadb_socket }}"
+  when: not mariadb_in_container
+  tags: [mariadb, db]
+
+- name: Create the WordPress network user + grant
+  community.mysql.mysql_user:
+    name: "{{ mariadb_wp_user }}"
+    host: "{{ mariadb_wp_user_host }}"
+    password: "{{ mariadb_wp_password }}"
+    priv: "{{ mariadb_wp_db }}.*:ALL"
+    state: present
+    login_unix_socket: "{{ mariadb_socket }}"
+  no_log: true
+  when: not mariadb_in_container
+  tags: [mariadb, db]
+
+# --- firewall (SELinux: 3306 is mysqld_port_t by default, nothing to relabel) ---
+- name: Allow MySQL from the web subnet only
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ mariadb_allowed_subnet }} port port=3306 protocol=tcp accept"
+    permanent: true
+    immediate: true
+    state: enabled
+  when: not mariadb_in_container
+  tags: [mariadb, firewall]

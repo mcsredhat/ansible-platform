@@ -1,0 +1,4 @@
+# Managed by Ansible (tuning role)
+{% for k, v in tuning_sysctl_settings.items() %}
+{{ k }} = {{ v }}
+{% endfor %}
