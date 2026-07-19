@@ -7,15 +7,17 @@ dependency:
 driver:
   name: podman
 platforms:
-  - name: nginx-el9
-    image: quay.io/rockylinux/rockylinux:9
-    command: /usr/sbin/init
-    systemd: always
-    privileged: true
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw
-    cgroupns_mode: host
+- name: nginx-el9
+  image: quay.io/rockylinux/rockylinux:9
+  command: /usr/sbin/init
+  systemd: always
+  privileged: true
+  volumes:
+  - /sys/fs/cgroup:/sys/fs/cgroup:rw
+  cgroupns_mode: host
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: ../../../../roles
 verifier:
   name: ansible

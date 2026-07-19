@@ -7,20 +7,22 @@ dependency:
 driver:
   name: podman
 platforms:
-  - name: hardening-el9
-    image: quay.io/rockylinux/rockylinux:9
-    command: /usr/sbin/init
-    systemd: always
-    privileged: true
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw
-    cgroupns_mode: host
+- name: hardening-el9
+  image: quay.io/rockylinux/rockylinux:9
+  command: /usr/sbin/init
+  systemd: always
+  privileged: true
+  volumes:
+  - /sys/fs/cgroup:/sys/fs/cgroup:rw
+  cgroupns_mode: host
 provisioner:
   name: ansible
   inventory:
     group_vars:
       all:
-        hardening_ssh: false       # no sshd binary in the minimal container
-        hardening_sysctl: false     # kernel-level, not testable in a container
+        hardening_ssh: false
+        hardening_sysctl: false
+  env:
+    ANSIBLE_ROLES_PATH: ../../../../roles
 verifier:
   name: ansible
