@@ -2,11 +2,11 @@
 driver:
   name: podman
 platforms:
-- name: alertmanager-el9
-  image: quay.io/rockylinux/rockylinux:9
-  pre_build_image: true
-  systemd: always
-  command: /usr/sbin/init
+  - name: alertmanager-el9
+    image: quay.io/rockylinux/rockylinux:9
+    pre_build_image: true
+    systemd: always
+    command: /usr/sbin/init
 provisioner:
   name: ansible
   env:

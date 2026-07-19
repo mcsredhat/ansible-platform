@@ -7,22 +7,22 @@ dependency:
 driver:
   name: podman
 platforms:
-- name: keepalived-el9
-  image: quay.io/rockylinux/rockylinux:9
-  command: /usr/sbin/init
-  systemd: always
-  privileged: true
-  volumes:
-  - /sys/fs/cgroup:/sys/fs/cgroup:rw
-  cgroupns_mode: host
+  - name: keepalived-el9
+    image: quay.io/rockylinux/rockylinux:9
+    command: /usr/sbin/init
+    systemd: always
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
 provisioner:
   name: ansible
   inventory:
     host_vars:
       keepalived-el9:
         keepalived_peers:
-        - 10.0.0.9
-        - 10.0.0.8
+          - 10.0.0.9
+          - 10.0.0.8
   env:
     ANSIBLE_ROLES_PATH: ../../../../roles
 verifier:

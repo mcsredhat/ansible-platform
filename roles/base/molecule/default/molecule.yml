@@ -7,16 +7,16 @@ dependency:
 driver:
   name: podman
 platforms:
-- name: base-el9
-  image: quay.io/rockylinux/rockylinux:9
-  command: /usr/sbin/init
-  systemd: always
-  privileged: true
-  capabilities:
-  - SYS_ADMIN
-  volumes:
-  - /sys/fs/cgroup:/sys/fs/cgroup:rw
-  cgroupns_mode: host
+  - name: base-el9
+    image: quay.io/rockylinux/rockylinux:9
+    command: /usr/sbin/init
+    systemd: always
+    privileged: true
+    capabilities:
+      - SYS_ADMIN
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
 provisioner:
   name: ansible
   inventory:
@@ -30,10 +30,10 @@ provisioner:
         gateway: 192.168.1.254
         dns_server: 192.168.1.254
         platform_hosts:
-        - ip: 192.168.1.11
-          names: edge1.platform.lab edge1
-        - ip: 192.168.1.31
-          names: data1.platform.lab data1
+          - ip: 192.168.1.11
+            names: edge1.platform.lab edge1
+          - ip: 192.168.1.31
+            names: data1.platform.lab data1
   env:
     ANSIBLE_ROLES_PATH: ../../../../roles
 verifier:
