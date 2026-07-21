@@ -12,8 +12,18 @@ audit_aide_check_oncalendar: "*-*-* 05:00:00"
 
 # --- OpenSCAP compliance scanning ---
 audit_openscap: true
-audit_openscap_profile: "xccdf_org.ssgproject.content_profile_cis_server_l1"
+# Profile: CIS by default; set to the ANSSI BP-28 high profile for Compliance (5e):
+#   xccdf_org.ssgproject.content_profile_anssi_bp28_high
+# (also available: _minimal, _intermediary, _enhanced)
+audit_openscap_profile: "xccdf_org.ssgproject.content_profile_anssi_bp28_high"
 audit_openscap_datastream: "/usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml"
 audit_openscap_oncalendar: "Sun *-*-* 03:00:00"
 audit_openscap_report_dir: "/var/log/oscap"
 audit_openscap_run_now: false  # don't run a (slow) scan during the playbook by default
+
+# --- Compliance scoring (5e) ---
+# Emit an ARF/XML result + a Prometheus textfile metric of the pass rate so
+# compliance is continuously observable, not just a one-off HTML report.
+audit_openscap_metrics: true
+audit_openscap_textfile_dir: /var/lib/node_exporter/textfile_collector
+audit_openscap_keep_reports: 12   # how many dated reports to retain

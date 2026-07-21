@@ -1,10 +1,62 @@
 #!/bin/bash
-# Managed by Ansible (audit role)
+# Managed by Ansible (audit role) — ANSSI/OpenSCAP compliance scan (Phase 5e)
 set -uo pipefail
-TS=$(date +%F)
-REPORT="{{ audit_openscap_report_dir }}/oscap-${TS}.html"
+
+TS="$(date +%F_%H%M)"
+REPORT_DIR="{{ audit_openscap_report_dir }}"
+REPORT="${REPORT_DIR}/oscap-{{ audit_openscap_profile | regex_replace('.*profile_', '') }}-${TS}.html"
+RESULTS="${REPORT_DIR}/oscap-results-${TS}.xml"
+PROFILE="{{ audit_openscap_profile }}"
+DS="{{ audit_openscap_datastream }}"
+
+# Run the scan. oscap returns 2 when some rules fail — that's normal, not an error.
 oscap xccdf eval \
-  --profile {{ audit_openscap_profile }} \
+  --profile "$PROFILE" \
+  --results "$RESULTS" \
   --report "$REPORT" \
-  {{ audit_openscap_datastream }} || true   # non-zero only means some rules failed
-echo "OpenSCAP report written to $REPORT"
+  "$DS"
+RC=$?
+echo "OpenSCAP report: $REPORT (rc=$RC)"
+
+{% if audit_openscap_metrics %}
+# --- Emit a Prometheus compliance metric from the XML results ---
+TEXTFILE_DIR="{{ audit_openscap_textfile_dir }}"
+PROM="${TEXTFILE_DIR}/compliance.prom"
+if [ -d "$TEXTFILE_DIR" ] && [ -f "$RESULTS" ]; then
+    # Count rule-results by outcome from the ARF/XCCDF results XML.
+    PASS=$(grep -c '<result>pass</result>' "$RESULTS" 2>/dev/null || echo 0)
+    FAIL=$(grep -c '<result>fail</result>' "$RESULTS" 2>/dev/null || echo 0)
+    # scored = pass + fail (ignore notapplicable/notchecked/informational)
+    SCORED=$(( PASS + FAIL ))
+    if [ "$SCORED" -gt 0 ]; then
+        SCORE=$(awk "BEGIN{printf \"%.2f\", ($PASS/$SCORED)*100}")
+    else
+        SCORE=0
+    fi
+    TMP="$(mktemp)"
+    {
+      echo "# HELP compliance_rules_pass Rules passing the OpenSCAP profile."
+      echo "# TYPE compliance_rules_pass gauge"
+      echo "compliance_rules_pass{profile=\"$PROFILE\"} $PASS"
+      echo "# HELP compliance_rules_fail Rules failing the OpenSCAP profile."
+      echo "# TYPE compliance_rules_fail gauge"
+      echo "compliance_rules_fail{profile=\"$PROFILE\"} $FAIL"
+      echo "# HELP compliance_score_percent Percent of scored rules passing."
+      echo "# TYPE compliance_score_percent gauge"
+      echo "compliance_score_percent{profile=\"$PROFILE\"} $SCORE"
+      echo "# HELP compliance_last_scan_timestamp_seconds Unix time of last scan."
+      echo "# TYPE compliance_last_scan_timestamp_seconds gauge"
+      echo "compliance_last_scan_timestamp_seconds $(date +%s)"
+    } > "$TMP"
+    install -m 0644 "$TMP" "$PROM"
+    rm -f "$TMP"
+    echo "Compliance metric: score=${SCORE}% (pass=$PASS fail=$FAIL)"
+fi
+{% endif %}
+
+# --- Retention: keep only the most recent N reports+results ---
+KEEP="{{ audit_openscap_keep_reports }}"
+ls -1t "${REPORT_DIR}"/oscap-*.html 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f
+ls -1t "${REPORT_DIR}"/oscap-results-*.xml 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f
+
+exit 0

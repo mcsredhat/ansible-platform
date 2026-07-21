@@ -89,6 +89,16 @@
   when: audit_openscap | bool
   tags: [audit, openscap]
 
+- name: Ensure the node_exporter textfile dir exists (for compliance metric)
+  ansible.builtin.file:
+    path: "{{ audit_openscap_textfile_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: audit_openscap | bool and audit_openscap_metrics | bool
+  tags: [audit, openscap, compliance]
+
 - name: Ensure OpenSCAP report directory
   ansible.builtin.file:
     path: "{{ audit_openscap_report_dir }}"

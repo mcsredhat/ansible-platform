@@ -93,6 +93,7 @@
     - slo-error-budget.json
     - capacity-trends.json
     - security-overview.json
+    - compliance.json
   notify: restart grafana
   tags: [grafana, dashboards]
 

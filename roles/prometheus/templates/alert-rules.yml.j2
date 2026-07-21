@@ -125,8 +125,8 @@ groups:
           severity: critical
           category: security
         annotations:
-          summary: "AIDE detected file-integrity changes on {{ $labels.instance }}"
-          description: "{{ $value }} files changed since the AIDE baseline on {{ $labels.instance }} — investigate unauthorized modification."
+          summary: "AIDE detected file-integrity changes on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "{{ '{{' }} $value {{ '}}' }} files changed since the AIDE baseline on {{ '{{' }} $labels.instance {{ '}}' }} — investigate unauthorized modification."
 
       - alert: AideCheckStale
         expr: (time() - aide_check_last_run_timestamp_seconds) > 172800
@@ -135,8 +135,8 @@ groups:
           severity: warning
           category: security
         annotations:
-          summary: "AIDE check stale on {{ $labels.instance }}"
-          description: "AIDE has not run in over 48h on {{ $labels.instance }}."
+          summary: "AIDE check stale on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "AIDE has not run in over 48h on {{ '{{' }} $labels.instance {{ '}}' }}."
 
       - alert: Fail2banManyBans
         expr: sum by (instance, jail) (increase(fail2ban_banned_total[15m])) > 10
@@ -145,5 +145,27 @@ groups:
           severity: warning
           category: security
         annotations:
-          summary: "High fail2ban ban rate on {{ $labels.instance }} ({{ $labels.jail }})"
-          description: "More than 10 new bans in 15m for jail {{ $labels.jail }} on {{ $labels.instance }}."
+          summary: "High fail2ban ban rate on {{ '{{' }} $labels.instance {{ '}}' }} ({{ '{{' }} $labels.jail {{ '}}' }})"
+          description: "More than 10 new bans in 15m for jail {{ '{{' }} $labels.jail {{ '}}' }} on {{ '{{' }} $labels.instance {{ '}}' }}."
+
+  - name: compliance
+    rules:
+      - alert: ComplianceScoreLow
+        expr: compliance_score_percent < 80
+        for: 10m
+        labels:
+          severity: warning
+          category: compliance
+        annotations:
+          summary: "ANSSI compliance score below 80% on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "OpenSCAP compliance score is {{ '{{' }} $value {{ '}}' }}% on {{ '{{' }} $labels.instance {{ '}}' }} (profile {{ '{{' }} $labels.profile {{ '}}' }})."
+
+      - alert: ComplianceScanStale
+        expr: (time() - compliance_last_scan_timestamp_seconds) > 864000
+        for: 1h
+        labels:
+          severity: warning
+          category: compliance
+        annotations:
+          summary: "Compliance scan stale on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "No OpenSCAP compliance scan has run in over 10 days on {{ '{{' }} $labels.instance {{ '}}' }}."

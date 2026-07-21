@@ -3,3 +3,4 @@
   ansible.builtin.systemd:
     name: grafana-server
     state: restarted
+  when: not (grafana_in_container | default(false))
