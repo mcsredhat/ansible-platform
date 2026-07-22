@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+user = {{ mail_pg_user }}
+password = {{ mail_pg_password }}
+hosts = {{ mail_pg_host }}
+dbname = {{ mail_pg_db }}
+query = SELECT destination FROM virtual_aliases WHERE source='%s'

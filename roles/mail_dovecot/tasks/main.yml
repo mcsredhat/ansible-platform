@@ -1,0 +1,68 @@
+---
+- name: Install Dovecot + PostgreSQL support
+  ansible.builtin.dnf:
+    name: "{{ mail_dovecot_packages }}"
+    state: present
+  tags: [mail, dovecot]
+
+- name: Generate a self-signed TLS cert for the lab (real certs come with the public domain)
+  ansible.builtin.command:
+    cmd: >
+      openssl req -x509 -nodes -days 825 -newkey rsa:2048
+      -keyout {{ mail_tls_key }} -out {{ mail_tls_cert }}
+      -subj "/CN={{ mail_hostname }}"
+    creates: "{{ mail_tls_cert }}"
+  tags: [mail, dovecot, tls]
+
+- name: Secure the TLS key
+  ansible.builtin.file:
+    path: "{{ mail_tls_key }}"
+    owner: root
+    group: root
+    mode: "0600"
+  tags: [mail, dovecot, tls]
+
+- name: Deploy dovecot.conf
+  ansible.builtin.template:
+    src: dovecot.conf.j2
+    dest: /etc/dovecot/dovecot.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart dovecot
+  tags: [mail, dovecot]
+
+- name: Deploy the SQL auth config
+  ansible.builtin.template:
+    src: dovecot-sql.conf.ext.j2
+    dest: /etc/dovecot/dovecot-sql.conf.ext
+    owner: root
+    group: dovecot
+    mode: "0640"
+  notify: restart dovecot
+  tags: [mail, dovecot]
+
+- name: Open firewall for imap/imaps/pop3/pop3s
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: [imap, imaps, pop3, pop3s]
+  tags: [mail, dovecot, firewall]
+
+- name: Enable and start Dovecot
+  ansible.builtin.systemd:
+    name: dovecot
+    state: started
+    enabled: true
+  tags: [mail, dovecot]
+
+# --- Seed initial mailboxes (password hashed by doveadm) ---
+- name: Create initial mailbox accounts
+  ansible.builtin.include_tasks: seed_account.yml
+  loop: "{{ mail_accounts }}"
+  loop_control:
+    loop_var: acct
+  when: mail_accounts | length > 0
+  tags: [mail, dovecot, accounts]

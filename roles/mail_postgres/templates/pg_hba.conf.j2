@@ -1,0 +1,5 @@
+# {{ ansible_managed }}
+local   all             postgres                                peer
+local   all             all                                     md5
+host    {{ mail_pg_db }}  {{ mail_pg_user }}   127.0.0.1/32       md5
+host    {{ mail_pg_db }}  {{ mail_pg_user }}   ::1/128            md5

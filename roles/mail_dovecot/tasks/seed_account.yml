@@ -1,0 +1,21 @@
+---
+- name: "Hash the password for {{ acct.user }}@{{ acct.domain }}"
+  ansible.builtin.command:
+    cmd: "doveadm pw -s SHA512-CRYPT -p {{ acct.password_plain }}"
+  register: pwhash
+  changed_when: false
+  no_log: true
+
+- name: "Insert mailbox {{ acct.user }}@{{ acct.domain }} into PostgreSQL"
+  community.postgresql.postgresql_query:
+    db: "{{ mail_pg_db }}"
+    query: >
+      INSERT INTO virtual_users (domain_id, email, password)
+      VALUES ((SELECT id FROM virtual_domains WHERE name=%s), %s, %s)
+      ON CONFLICT (email) DO UPDATE SET password=EXCLUDED.password
+    positional_args:
+      - "{{ acct.domain }}"
+      - "{{ acct.user }}@{{ acct.domain }}"
+      - "{{ pwhash.stdout }}"
+  become_user: postgres
+  no_log: true

@@ -1,0 +1,84 @@
+---
+- name: Install Postfix + PostgreSQL map support
+  ansible.builtin.dnf:
+    name: "{{ mail_postfix_packages }}"
+    state: present
+  tags: [mail, postfix]
+
+- name: Create the vmail group
+  ansible.builtin.group:
+    name: "{{ mail_vmail_group }}"
+    gid: "{{ mail_vmail_gid }}"
+    state: present
+  tags: [mail, postfix]
+
+- name: Create the vmail user
+  ansible.builtin.user:
+    name: "{{ mail_vmail_user }}"
+    uid: "{{ mail_vmail_uid }}"
+    group: "{{ mail_vmail_group }}"
+    home: "{{ mail_vmail_home }}"
+    shell: /sbin/nologin
+    system: true
+    create_home: true
+    state: present
+  tags: [mail, postfix]
+
+- name: Ensure the virtual mailbox base directory exists
+  ansible.builtin.file:
+    path: "{{ mail_vmail_home }}"
+    state: directory
+    owner: "{{ mail_vmail_user }}"
+    group: "{{ mail_vmail_group }}"
+    mode: "0770"
+  tags: [mail, postfix]
+
+- name: Deploy the PostgreSQL lookup maps
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/postfix/{{ item }}"
+    owner: root
+    group: postfix
+    mode: "0640"
+  loop:
+    - pgsql-virtual-mailbox-domains.cf
+    - pgsql-virtual-mailbox-maps.cf
+    - pgsql-virtual-alias-maps.cf
+  notify: restart postfix
+  tags: [mail, postfix]
+
+- name: Deploy main.cf
+  ansible.builtin.template:
+    src: main.cf.j2
+    dest: /etc/postfix/main.cf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart postfix
+  tags: [mail, postfix]
+
+- name: Deploy master.cf (enables submission 587 + smtps 465)
+  ansible.builtin.template:
+    src: master.cf.j2
+    dest: /etc/postfix/master.cf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart postfix
+  tags: [mail, postfix]
+
+- name: Open firewall for smtp/submission/smtps
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: [smtp, smtp-submission, smtps]
+  tags: [mail, postfix, firewall]
+
+- name: Enable and start Postfix
+  ansible.builtin.systemd:
+    name: postfix
+    state: started
+    enabled: true
+  tags: [mail, postfix]

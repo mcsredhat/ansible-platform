@@ -1,0 +1,72 @@
+# {{ ansible_managed }}
+protocols = imap pop3 lmtp
+listen = *, ::
+
+# --- TLS ---
+ssl = required
+ssl_cert = <{{ mail_tls_cert }}
+ssl_key = <{{ mail_tls_key }}
+ssl_min_protocol = TLSv1.2
+
+# --- Mail location: maildir per virtual user ---
+mail_location = maildir:{{ mail_vmail_home }}/%d/%n
+mail_privileged_group = mail
+
+# --- The virtual mail user owns all mailboxes ---
+first_valid_uid = {{ mail_vmail_uid }}
+last_valid_uid = {{ mail_vmail_uid }}
+
+# --- Authentication (SQL/PostgreSQL) ---
+disable_plaintext_auth = yes
+auth_mechanisms = plain login
+passdb {
+  driver = sql
+  args = /etc/dovecot/dovecot-sql.conf.ext
+}
+userdb {
+  driver = static
+  args = uid={{ mail_vmail_uid }} gid={{ mail_vmail_gid }} home={{ mail_vmail_home }}/%d/%n
+}
+
+# --- LMTP: how Postfix delivers into mailboxes ---
+service lmtp {
+  unix_listener /var/spool/postfix/private/dovecot-lmtp {
+    mode = 0600
+    user = postfix
+    group = postfix
+  }
+}
+
+# --- SASL auth socket: how Postfix authenticates submission ---
+service auth {
+  unix_listener /var/spool/postfix/private/auth {
+    mode = 0660
+    user = postfix
+    group = postfix
+  }
+}
+
+service imap-login {
+  inet_listener imap {
+    port = 143
+  }
+  inet_listener imaps {
+    port = 993
+  }
+}
+service pop3-login {
+  inet_listener pop3 {
+    port = 110
+  }
+  inet_listener pop3s {
+    port = 995
+  }
+}
+#service imap-login {
+#  inet_listener imap  { port = 143 }
+#  inet_listener imaps { port = 993 }
+#}
+#service pop3-login {
+ # inet_listener pop3  { port = 110 }
+ # inet_listener pop3s { port = 995 }
+#}

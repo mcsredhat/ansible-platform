@@ -1,0 +1,6 @@
+---
+- name: Provision the mail PostgreSQL backend
+  hosts: mail
+  become: true
+  roles:
+    - mail_postgres

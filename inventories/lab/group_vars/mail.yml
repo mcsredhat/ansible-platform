@@ -1,2 +1,4 @@
 ---
 # mail tier — populated in Phase 6
+mail_accounts:
+  - { user: "test", domain: "platform.lab", password_plain: "TestMailPass2026" }

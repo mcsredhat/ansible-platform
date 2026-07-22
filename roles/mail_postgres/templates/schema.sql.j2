@@ -1,0 +1,17 @@
+-- {{ ansible_managed }}
+CREATE TABLE IF NOT EXISTS virtual_domains (
+    id   SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+CREATE TABLE IF NOT EXISTS virtual_users (
+    id        SERIAL PRIMARY KEY,
+    domain_id INTEGER NOT NULL REFERENCES virtual_domains(id) ON DELETE CASCADE,
+    email     VARCHAR(255) NOT NULL UNIQUE,
+    password  VARCHAR(255) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS virtual_aliases (
+    id          SERIAL PRIMARY KEY,
+    domain_id   INTEGER NOT NULL REFERENCES virtual_domains(id) ON DELETE CASCADE,
+    source      VARCHAR(255) NOT NULL,
+    destination VARCHAR(255) NOT NULL
+);

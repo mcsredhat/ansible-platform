@@ -1,0 +1,43 @@
+# {{ ansible_managed }}
+compatibility_level = 3.6
+
+# --- identity ---
+myhostname = {{ mail_hostname }}
+mydomain = {{ mail_domain }}
+myorigin = $mydomain
+inet_interfaces = all
+inet_protocols = all
+mydestination = localhost
+mynetworks = {{ mail_mynetworks }}
+
+# --- virtual mailbox domains/users/aliases via PostgreSQL ---
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+virtual_mailbox_domains = pgsql:/etc/postfix/pgsql-virtual-mailbox-domains.cf
+virtual_mailbox_maps = pgsql:/etc/postfix/pgsql-virtual-mailbox-maps.cf
+virtual_alias_maps = pgsql:/etc/postfix/pgsql-virtual-alias-maps.cf
+
+# --- TLS (opportunistic inbound; self-signed in lab) ---
+smtpd_tls_cert_file = {{ mail_tls_cert }}
+smtpd_tls_key_file = {{ mail_tls_key }}
+smtpd_tls_security_level = may
+smtp_tls_security_level = may
+smtpd_tls_protocols = >=TLSv1.2
+smtp_tls_protocols = >=TLSv1.2
+
+# --- SASL auth via Dovecot (for submission) ---
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_security_options = noanonymous
+
+# --- restrictions: only authenticated or trusted may relay ---
+smtpd_relay_restrictions =
+    permit_mynetworks
+    permit_sasl_authenticated
+    reject_unauth_destination
+smtpd_recipient_restrictions =
+    permit_mynetworks
+    permit_sasl_authenticated
+    reject_unauth_destination
+
+message_size_limit = 26214400

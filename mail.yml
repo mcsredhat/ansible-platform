@@ -1,0 +1,8 @@
+---
+- name: Provision the mail platform (backend + transport + IMAP)
+  hosts: mail
+  become: true
+  roles:
+    - mail_postgres
+    - mail_postfix
+    - mail_dovecot

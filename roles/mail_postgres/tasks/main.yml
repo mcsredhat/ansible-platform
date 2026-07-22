@@ -1,0 +1,84 @@
+---
+- name: Install PostgreSQL
+  ansible.builtin.dnf:
+    name: "{{ mail_pg_packages }}"
+    state: present
+  tags: [mail, postgres]
+
+- name: Initialize the PostgreSQL data directory
+  ansible.builtin.command: /usr/bin/postgresql-setup --initdb
+  args:
+    creates: "{{ mail_pg_data_dir }}/PG_VERSION"
+  tags: [mail, postgres]
+
+- name: Configure pg_hba.conf for md5 password auth
+  ansible.builtin.template:
+    src: pg_hba.conf.j2
+    dest: "{{ mail_pg_data_dir }}/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: "0600"
+  notify: restart postgresql
+  tags: [mail, postgres]
+
+- name: Enable and start PostgreSQL
+  ansible.builtin.systemd:
+    name: postgresql
+    state: started
+    enabled: true
+  tags: [mail, postgres]
+
+- name: Create the mail database
+  community.postgresql.postgresql_db:
+    name: "{{ mail_pg_db }}"
+    state: present
+  become_user: postgres
+  tags: [mail, postgres]
+
+- name: Create the mail DB user
+  community.postgresql.postgresql_user:
+    db: "{{ mail_pg_db }}"
+    name: "{{ mail_pg_user }}"
+    password: "{{ mail_pg_password }}"
+    encrypted: true
+    state: present
+  become_user: postgres
+  no_log: true
+  tags: [mail, postgres]
+
+- name: Deploy the mail schema
+  ansible.builtin.template:
+    src: schema.sql.j2
+    dest: /tmp/mail-schema.sql
+    owner: postgres
+    group: postgres
+    mode: "0600"
+  tags: [mail, postgres]
+
+- name: Apply the mail schema
+  community.postgresql.postgresql_db:
+    name: "{{ mail_pg_db }}"
+    state: restore
+    target: /tmp/mail-schema.sql
+  become_user: postgres
+  tags: [mail, postgres]
+
+- name: Grant the mail user SELECT on the schema tables
+  community.postgresql.postgresql_privs:
+    db: "{{ mail_pg_db }}"
+    role: "{{ mail_pg_user }}"
+    privs: SELECT
+    objs: virtual_domains,virtual_users,virtual_aliases
+    type: table
+  become_user: postgres
+  tags: [mail, postgres]
+
+- name: Seed virtual domains
+  community.postgresql.postgresql_query:
+    db: "{{ mail_pg_db }}"
+    query: "INSERT INTO virtual_domains (name) VALUES (%s) ON CONFLICT (name) DO NOTHING"
+    positional_args:
+      - "{{ item }}"
+  become_user: postgres
+  loop: "{{ mail_virtual_domains }}"
+  tags: [mail, postgres]

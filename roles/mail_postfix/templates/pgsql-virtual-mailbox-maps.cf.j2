@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+user = {{ mail_pg_user }}
+password = {{ mail_pg_password }}
+hosts = {{ mail_pg_host }}
+dbname = {{ mail_pg_db }}
+query = SELECT 1 FROM virtual_users WHERE email='%s'

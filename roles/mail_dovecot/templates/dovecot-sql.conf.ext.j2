@@ -1,0 +1,4 @@
+# {{ ansible_managed }}
+driver = pgsql
+connect = host={{ mail_pg_host }} dbname={{ mail_pg_db }} user={{ mail_pg_user }} password={{ mail_pg_password }}
+password_query = SELECT email as user, password FROM virtual_users WHERE email='%u'

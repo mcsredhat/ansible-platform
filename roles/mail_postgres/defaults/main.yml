@@ -1,0 +1,15 @@
+---
+# mail_postgres — virtual mailbox backend on mail1 (Phase 7)
+mail_pg_packages:
+  - postgresql-server
+  - postgresql
+  - python3-psycopg2
+mail_pg_data_dir: /var/lib/pgsql/data
+mail_pg_db: mailserver
+mail_pg_user: mailuser
+mail_pg_password: "{{ vault_mail_pg_password }}"
+
+mail_domain: "{{ domain }}"
+mail_virtual_domains:
+  - "{{ mail_domain }}"
+mail_accounts: []
