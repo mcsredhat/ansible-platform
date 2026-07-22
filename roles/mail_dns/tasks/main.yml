@@ -1,0 +1,53 @@
+---
+- name: Install BIND
+  ansible.builtin.dnf:
+    name: "{{ mail_dns_packages }}"
+    state: present
+  tags: [mail, dns]
+
+- name: Deploy named.conf with the mail zone
+  ansible.builtin.template:
+    src: named.conf.j2
+    dest: /etc/named.conf
+    owner: root
+    group: named
+    mode: "0640"
+  notify: restart named
+  tags: [mail, dns]
+
+- name: Deploy the forward zone file
+  ansible.builtin.template:
+    src: zone.forward.j2
+    dest: "/var/named/{{ mail_domain }}.zone"
+    owner: root
+    group: named
+    mode: "0640"
+  notify: restart named
+  tags: [mail, dns]
+
+- name: Open firewall for DNS
+  ansible.posix.firewalld:
+    service: dns
+    permanent: true
+    immediate: true
+    state: enabled
+  tags: [mail, dns, firewall]
+
+- name: Enable and start named
+  ansible.builtin.systemd:
+    name: named
+    state: started
+    enabled: true
+  tags: [mail, dns]
+
+- name: Show the DNS records that must be published (public deployment)
+  ansible.builtin.debug:
+    msg:
+      - "MX     {{ mail_domain }}.            -> {{ mail_hostname }} (prio 10)"
+      - "A      {{ mail_hostname }}.         -> {{ mail_server_ip }}"
+      - "TXT    {{ mail_domain }}.            -> {{ mail_spf_record }}"
+      - "TXT    _dmarc.{{ mail_domain }}.     -> v=DMARC1; p={{ mail_dmarc_policy }}; rua=mailto:{{ mail_dmarc_rua }}"
+      - "TXT    {{ mail_dkim_selector }}._domainkey.{{ mail_domain }}. -> (DKIM: see rspamd .txt file)"
+      - "TXT    _mta-sts.{{ mail_domain }}.   -> v=STSv1; id=... (MTA-STS)"
+      - "TXT    _smtp._tls.{{ mail_domain }}. -> v=TLSRPTv1; rua=mailto:{{ mail_dmarc_rua }} (TLS-RPT)"
+  tags: [mail, dns]

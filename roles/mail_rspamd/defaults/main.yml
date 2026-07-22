@@ -1,0 +1,20 @@
+---
+# mail_rspamd — spam filtering, DKIM signing, greylisting (Phase 7c)
+mail_rspamd_packages:
+  - rspamd
+  - redis                      # rspamd uses redis for stats/greylisting/ratelimit
+mail_domain: "{{ domain }}"
+mail_hostname: "mail.{{ mail_domain }}"
+
+# DKIM
+mail_dkim_selector: "mail"     # -> mail._domainkey.<domain>
+mail_dkim_key_dir: /var/lib/rspamd/dkim
+mail_dkim_key: "{{ mail_dkim_key_dir }}/{{ mail_domain }}.{{ mail_dkim_selector }}.key"
+
+# Rspamd controller web UI password (from vault); bind localhost only
+mail_rspamd_password: "{{ vault_rspamd_password | default('rspamd-change-me') }}"
+
+# spam thresholds
+mail_rspamd_reject_score: 15
+mail_rspamd_add_header_score: 6
+mail_rspamd_greylist_score: 4

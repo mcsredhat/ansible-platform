@@ -1,0 +1,13 @@
+# {{ ansible_managed }}
+# Sign outbound mail with DKIM
+enabled = true;
+selector = "{{ mail_dkim_selector }}";
+path = "{{ mail_dkim_key }}";
+allow_username_mismatch = true;
+use_domain = "header";
+domain {
+  {{ mail_domain }} {
+    selector = "{{ mail_dkim_selector }}";
+    path = "{{ mail_dkim_key }}";
+  }
+}

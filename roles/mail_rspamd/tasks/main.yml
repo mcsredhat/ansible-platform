@@ -1,0 +1,103 @@
+---
+- name: Add the Rspamd repository (not in RHEL base/AppStream)
+  ansible.builtin.yum_repository:
+    name: rspamd
+    description: Rspamd stable repository
+    baseurl: "https://rspamd.com/rpm-stable/centos-$releasever/$basearch/"
+    gpgcheck: true
+    gpgkey: https://rspamd.com/rpm-stable/gpg.key
+    enabled: true
+  tags: [mail, rspamd]
+
+- name: Detect current crypto policy
+  ansible.builtin.command: update-crypto-policies --show
+  register: mail_crypto_policy
+  changed_when: false
+  tags: [mail, rspamd]
+
+- name: Allow SHA1 for the Rspamd key import (LEGACY, temporary)
+  ansible.builtin.command: update-crypto-policies --set LEGACY
+  when: "'LEGACY' not in mail_crypto_policy.stdout"
+  changed_when: true
+  tags: [mail, rspamd]
+
+- name: Install Rspamd + Redis
+  ansible.builtin.dnf:
+    name: "{{ mail_rspamd_packages }}"
+    state: present
+  tags: [mail, rspamd]
+
+- name: Restore the previous crypto policy
+  ansible.builtin.command: "update-crypto-policies --set {{ mail_crypto_policy.stdout | trim }}"
+  when: "'LEGACY' not in mail_crypto_policy.stdout"
+  changed_when: true
+  tags: [mail, rspamd]
+
+- name: Enable and start Redis (rspamd backend)
+  ansible.builtin.systemd:
+    name: redis
+    state: started
+    enabled: true
+  tags: [mail, rspamd]
+
+- name: Create the DKIM key directory
+  ansible.builtin.file:
+    path: "{{ mail_dkim_key_dir }}"
+    state: directory
+    owner: _rspamd
+    group: _rspamd
+    mode: "0750"
+  tags: [mail, rspamd, dkim]
+
+- name: Generate the DKIM key + DNS record (idempotent)
+  ansible.builtin.command:
+    cmd: >
+      rspamadm dkim_keygen
+      -s {{ mail_dkim_selector }}
+      -d {{ mail_domain }}
+      -k {{ mail_dkim_key }}
+    creates: "{{ mail_dkim_key }}"
+  register: dkim_keygen
+  become_user: _rspamd
+  tags: [mail, rspamd, dkim]
+
+- name: Save the DKIM DNS record (TXT) for publishing
+  ansible.builtin.copy:
+    content: "{{ dkim_keygen.stdout }}\n"
+    dest: "{{ mail_dkim_key_dir }}/{{ mail_domain }}.{{ mail_dkim_selector }}.txt"
+    owner: _rspamd
+    group: _rspamd
+    mode: "0644"
+  when: dkim_keygen is changed
+  tags: [mail, rspamd, dkim]
+
+- name: Secure the DKIM private key
+  ansible.builtin.file:
+    path: "{{ mail_dkim_key }}"
+    owner: _rspamd
+    group: _rspamd
+    mode: "0640"
+  tags: [mail, rspamd, dkim]
+
+- name: Deploy Rspamd config modules
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/rspamd/local.d/{{ item }}"
+    owner: root
+    group: _rspamd
+    mode: "0640"
+  loop:
+    - dkim_signing.conf
+    - milter_headers.conf
+    - actions.conf
+    - greylist.conf
+    - worker-controller.inc
+  notify: restart rspamd
+  tags: [mail, rspamd]
+
+- name: Enable and start Rspamd
+  ansible.builtin.systemd:
+    name: rspamd
+    state: started
+    enabled: true
+  tags: [mail, rspamd]

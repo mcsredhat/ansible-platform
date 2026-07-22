@@ -1,0 +1,5 @@
+# {{ ansible_managed }}
+# Spam scoring thresholds
+reject = {{ mail_rspamd_reject_score }};
+add_header = {{ mail_rspamd_add_header_score }};
+greylist = {{ mail_rspamd_greylist_score }};

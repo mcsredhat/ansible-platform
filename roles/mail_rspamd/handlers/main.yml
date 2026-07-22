@@ -1,0 +1,5 @@
+---
+- name: restart rspamd
+  ansible.builtin.systemd:
+    name: rspamd
+    state: restarted
