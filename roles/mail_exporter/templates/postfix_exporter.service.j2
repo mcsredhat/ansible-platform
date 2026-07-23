@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Postfix Exporter for Prometheus
+After=network.target postfix.service
+
+[Service]
+User=postfix_exporter
+Group=postfix_exporter
+ExecStart=/usr/local/bin/postfix_exporter \
+  --web.listen-address=:{{ mail_postfix_exporter_port }} \
+  --postfix.logfile_path={{ mail_maillog_path }} \
+  --postfix.showq_path={{ mail_postfix_showq_path }}
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

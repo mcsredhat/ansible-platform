@@ -37,3 +37,10 @@ scrape_configs:
           instance: "{{ inventory_hostname }}"
           __path__: /var/log/nginx/error.log
 {% endif %}
+
+  - job_name: maillog
+    static_configs:
+      - labels:
+          job: maillog
+          host: {{ inventory_hostname }}
+          __path__: /var/log/maillog

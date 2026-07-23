@@ -61,3 +61,16 @@ scrape_configs:
         target_label: probe_url
       - target_label: __address__
         replacement: "127.0.0.1:{{ blackbox_exporter_port | default(9115) }}"
+
+  - job_name: postfix
+    static_configs:
+      - targets: ["mail1:{{ mail_postfix_exporter_port | default(9154) }}"]
+        labels:
+          service: mail
+
+  - job_name: rspamd
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["mail1:{{ mail_rspamd_metrics_port | default(11334) }}"]
+        labels:
+          service: mail

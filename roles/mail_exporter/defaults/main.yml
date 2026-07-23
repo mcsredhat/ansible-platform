@@ -1,0 +1,12 @@
+---
+# mail_exporter — Prometheus metrics for the mail stack (Phase 7e)
+# postfix_exporter parses the maillog + queue; rspamd exposes native metrics.
+mail_exporter_version: "0.6.0"
+mail_exporter_arch: "amd64"
+mail_exporter_url: "https://github.com/Hsn723/postfix_exporter/releases/download/v{{ mail_exporter_version }}/postfix_exporter_{{ mail_exporter_version }}_linux_{{ mail_exporter_arch }}.tar.gz"
+mail_postfix_exporter_port: 9154
+mail_maillog_path: /var/log/maillog
+mail_postfix_showq_path: /var/spool/postfix/public/showq
+
+# rspamd exposes prometheus metrics at :11334/metrics (controller) natively
+mail_rspamd_metrics_port: 11334

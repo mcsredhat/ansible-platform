@@ -6,7 +6,7 @@ maxretry  = {{ fail2ban_maxretry }}
 banaction = {{ fail2ban_banaction }}
 ignoreip  = {{ fail2ban_ignoreip }}
 
-{% for jail in fail2ban_jails %}
+{% for jail in fail2ban_jails + (fail2ban_jails_mail | default([])) %}
 [{{ jail.name }}]
 enabled = true
 {% if jail.backend is defined %}backend = {{ jail.backend }}

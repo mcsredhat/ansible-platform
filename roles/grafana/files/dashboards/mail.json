@@ -1,0 +1,41 @@
+{
+  "uid": "mail-overview",
+  "title": "Mail Platform",
+  "tags": ["platform", "mail"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-6h", "to": "now"},
+  "templating": {"list": [{"name": "DS", "type": "datasource", "query": "prometheus", "hide": 2, "current": {}, "refresh": 1}]},
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Postfix Queue Size",
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS}"},
+      "targets": [{"expr": "postfix_showq_message_size_bytes_count", "refId": "A", "datasource": {"type": "prometheus", "uid": "${DS}"}}],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "orange", "value": 50}, {"color": "red", "value": 200}]}}}
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Messages Delivered / Deferred / Bounced",
+      "gridPos": {"h": 8, "w": 18, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${DS}"},
+      "targets": [
+        {"expr": "rate(postfix_smtp_delivery_total[5m])", "legendFormat": "delivered", "refId": "A", "datasource": {"type": "prometheus", "uid": "${DS}"}},
+        {"expr": "rate(postfix_smtp_deferred_messages_total[5m])", "legendFormat": "deferred", "refId": "B", "datasource": {"type": "prometheus", "uid": "${DS}"}}
+      ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Rspamd Scan Results (spam/ham/reject)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "${DS}"},
+      "targets": [{"expr": "rspamd_scan_actions", "legendFormat": "{{action}}", "refId": "A", "datasource": {"type": "prometheus", "uid": "${DS}"}}]
+    },
+    {
+      "id": 4, "type": "logs", "title": "Recent Mail Log (Loki)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "datasource": {"type": "loki", "uid": "loki"},
+      "targets": [{"expr": "{job=\"maillog\"}", "refId": "A", "datasource": {"type": "loki", "uid": "loki"}}]
+    }
+  ]
+}

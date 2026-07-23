@@ -1,0 +1,61 @@
+---
+- name: Create the postfix_exporter system user
+  ansible.builtin.user:
+    name: postfix_exporter
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+  tags: [mail, exporter]
+
+- name: Download + extract postfix_exporter
+  ansible.builtin.unarchive:
+    src: "{{ mail_exporter_url }}"
+    dest: /usr/local/bin/
+    remote_src: true
+    include: [postfix_exporter]
+    mode: "0755"
+    owner: root
+    group: root
+    creates: /usr/local/bin/postfix_exporter
+  tags: [mail, exporter]
+
+- name: Allow postfix_exporter to read the maillog + showq (groups)
+  ansible.builtin.user:
+    name: postfix_exporter
+    groups: postfix
+    append: true
+  tags: [mail, exporter]
+
+- name: Deploy the postfix_exporter systemd unit
+  ansible.builtin.template:
+    src: postfix_exporter.service.j2
+    dest: /etc/systemd/system/postfix_exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart postfix_exporter
+  tags: [mail, exporter]
+
+- name: Open firewall for the postfix exporter
+  ansible.posix.firewalld:
+    port: "{{ mail_postfix_exporter_port }}/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+  tags: [mail, exporter, firewall]
+
+- name: Open firewall for the rspamd metrics endpoint
+  ansible.posix.firewalld:
+    port: "{{ mail_rspamd_metrics_port }}/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+  tags: [mail, exporter, firewall]
+
+- name: Enable and start postfix_exporter
+  ansible.builtin.systemd:
+    name: postfix_exporter
+    state: started
+    enabled: true
+    daemon_reload: true
+  tags: [mail, exporter]

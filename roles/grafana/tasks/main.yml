@@ -94,6 +94,7 @@
     - capacity-trends.json
     - security-overview.json
     - compliance.json
+    - mail.json
   notify: restart grafana
   tags: [grafana, dashboards]
 

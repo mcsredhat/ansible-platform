@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: mail_exporter
+  author: mcsredhat
+  description: Prometheus exporters for the mail stack (postfix + rspamd)
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: ["9"]
+  galaxy_tags: [rhel, mail, prometheus, monitoring]
+dependencies: []

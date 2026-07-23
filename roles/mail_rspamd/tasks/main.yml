@@ -95,6 +95,14 @@
   notify: restart rspamd
   tags: [mail, rspamd]
 
+- name: Open firewall for the Rspamd controller/metrics
+  ansible.posix.firewalld:
+    port: "11334/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+  tags: [mail, rspamd, firewall]
+
 - name: Enable and start Rspamd
   ansible.builtin.systemd:
     name: rspamd

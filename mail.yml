@@ -9,3 +9,4 @@
     - mail_rspamd
     - mail_dns
     - mail_roundcube
+    - mail_exporter

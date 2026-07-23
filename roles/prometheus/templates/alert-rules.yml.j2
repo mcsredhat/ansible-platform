@@ -169,3 +169,35 @@ groups:
         annotations:
           summary: "Compliance scan stale on {{ '{{' }} $labels.instance {{ '}}' }}"
           description: "No OpenSCAP compliance scan has run in over 10 days on {{ '{{' }} $labels.instance {{ '}}' }}."
+
+  - name: mail
+    rules:
+      - alert: MailExporterDown
+        expr: up{job="postfix"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: mail
+        annotations:
+          summary: "Postfix exporter down on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Cannot scrape postfix metrics on {{ '{{' }} $labels.instance {{ '}}' }} for 5m."
+
+      - alert: MailQueueHigh
+        expr: postfix_showq_message_size_bytes_count > 200
+        for: 10m
+        labels:
+          severity: warning
+          category: mail
+        annotations:
+          summary: "Postfix queue backing up on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Postfix queue has {{ '{{' }} $value {{ '}}' }} messages for over 10m — delivery may be stuck."
+
+      - alert: RspamdDown
+        expr: up{job="rspamd"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          category: mail
+        annotations:
+          summary: "Rspamd metrics unreachable on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Rspamd controller metrics endpoint not responding for 5m."

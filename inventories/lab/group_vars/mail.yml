@@ -1,4 +1,17 @@
 ---
 # mail tier — populated in Phase 6
-mail_accounts:
-  - { user: "test", domain: "platform.lab", password_plain: "TestMailPass2026" }
+
+# --- fail2ban jails specific to the mail tier (extend the fleet defaults) ---
+fail2ban_jails_mail:
+  - name: postfix
+    enabled: true
+    port: "smtp,submission,smtps"
+    filter: postfix
+    logpath: /var/log/maillog
+    maxretry: 5
+  - name: dovecot
+    enabled: true
+    port: "imap,imaps,pop3,pop3s,submission,smtps"
+    filter: dovecot
+    logpath: /var/log/maillog
+    maxretry: 5
