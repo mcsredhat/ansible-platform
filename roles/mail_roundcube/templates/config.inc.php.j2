@@ -1,0 +1,22 @@
+<?php
+/* {{ ansible_managed }} */
+$config = [];
+$config['db_dsnw'] = 'pgsql://{{ mail_rc_db_user }}:{{ mail_rc_db_password }}@127.0.0.1/{{ mail_rc_db }}';
+
+// IMAP (Dovecot on this host)
+$config['imap_host'] = '{{ mail_rc_imap_host }}:{{ mail_rc_imap_port }}';
+
+// SMTP (Postfix submission on this host, authenticated)
+$config['smtp_host'] = '{{ mail_rc_smtp_host }}:{{ mail_rc_smtp_port }}';
+$config['smtp_user'] = '%u';
+$config['smtp_pass'] = '%p';
+
+$config['support_url'] = '';
+$config['product_name'] = 'Webmail — {{ mail_domain }}';
+$config['des_key'] = '{{ mail_rc_des_key }}';
+$config['plugins'] = ['archive', 'zipdownload'];
+$config['language'] = 'en_US';
+
+// Accept the self-signed lab cert (real cert in production)
+$config['imap_conn_options'] = ['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]];
+$config['smtp_conn_options'] = ['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]];

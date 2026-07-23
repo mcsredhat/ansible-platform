@@ -1,0 +1,38 @@
+---
+# mail_roundcube — webmail UI (Phase 7d)
+# Roundcube needs: a web server (nginx) + PHP-FPM + its own database.
+mail_roundcube_version: "1.6.9"
+mail_roundcube_url: "https://github.com/roundcube/roundcubemail/releases/download/{{ mail_roundcube_version }}/roundcubemail-{{ mail_roundcube_version }}-complete.tar.gz"
+mail_roundcube_dir: /usr/share/roundcubemail
+mail_roundcube_web_root: /var/www/roundcube
+
+mail_domain: "{{ domain }}"
+mail_hostname: "mail.{{ mail_domain }}"
+mail_webmail_host: "webmail.{{ mail_domain }}"
+
+# Roundcube stores its own settings/contacts in PostgreSQL (reuse mail1's PG)
+mail_rc_db: roundcube
+mail_rc_db_user: roundcube
+mail_rc_db_password: "{{ vault_roundcube_db_password | default('roundcube-change-me') }}"
+
+# IMAP/SMTP the webmail connects to (localhost — same box)
+mail_rc_imap_host: "ssl://127.0.0.1"
+mail_rc_imap_port: 993
+mail_rc_smtp_host: "tls://127.0.0.1"
+mail_rc_smtp_port: 587
+
+# des_key: 24-char encryption key for Roundcube sessions (from vault)
+mail_rc_des_key: "{{ vault_roundcube_des_key | default('rcmail-24char-changeme!!') }}"
+
+mail_roundcube_packages:
+  - nginx
+  - php-fpm
+  - php-pdo
+  - php-pgsql
+  - php-mbstring
+  - php-xml
+  - php-json
+  - php-intl
+  - php-gd
+  - php-zip
+  - php-ldap

@@ -1,0 +1,137 @@
+---
+- name: Install nginx + PHP + extensions for Roundcube
+  ansible.builtin.dnf:
+    name: "{{ mail_roundcube_packages }}"
+    state: present
+  tags: [mail, roundcube]
+
+- name: Create the Roundcube PostgreSQL database
+  community.postgresql.postgresql_db:
+    name: "{{ mail_rc_db }}"
+    state: present
+  become_user: postgres
+  tags: [mail, roundcube]
+
+- name: Create the Roundcube DB user
+  community.postgresql.postgresql_user:
+    db: "{{ mail_rc_db }}"
+    name: "{{ mail_rc_db_user }}"
+    password: "{{ mail_rc_db_password }}"
+    encrypted: true
+    state: present
+  become_user: postgres
+  no_log: true
+  tags: [mail, roundcube]
+
+- name: Grant Roundcube user all privileges on its database
+  community.postgresql.postgresql_privs:
+    db: "{{ mail_rc_db }}"
+    role: "{{ mail_rc_db_user }}"
+    privs: ALL
+    type: database
+    obj: "{{ mail_rc_db }}"
+  become_user: postgres
+  tags: [mail, roundcube]
+
+- name: Download Roundcube
+  ansible.builtin.get_url:
+    url: "{{ mail_roundcube_url }}"
+    dest: "/tmp/roundcube-{{ mail_roundcube_version }}.tar.gz"
+    mode: "0644"
+  tags: [mail, roundcube]
+
+- name: Create the web root
+  ansible.builtin.file:
+    path: "{{ mail_roundcube_web_root }}"
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: "0755"
+  tags: [mail, roundcube]
+
+- name: Extract Roundcube
+  ansible.builtin.unarchive:
+    src: "/tmp/roundcube-{{ mail_roundcube_version }}.tar.gz"
+    dest: "{{ mail_roundcube_web_root }}"
+    remote_src: true
+    extra_opts: [--strip-components=1]
+    creates: "{{ mail_roundcube_web_root }}/index.php"
+    owner: nginx
+    group: nginx
+  tags: [mail, roundcube]
+
+- name: Load the Roundcube database schema
+  ansible.builtin.shell: >
+    PGPASSWORD='{{ mail_rc_db_password }}'
+    psql -h 127.0.0.1 -U {{ mail_rc_db_user }} -d {{ mail_rc_db }}
+    -f {{ mail_roundcube_web_root }}/SQL/postgres.initial.sql
+  args:
+    creates: /var/lib/pgsql/.roundcube_schema_loaded
+  register: rc_schema
+  tags: [mail, roundcube]
+
+- name: Mark schema loaded
+  ansible.builtin.file:
+    path: /var/lib/pgsql/.roundcube_schema_loaded
+    state: touch
+    mode: "0644"
+  when: rc_schema is changed
+  tags: [mail, roundcube]
+
+- name: Deploy Roundcube config
+  ansible.builtin.template:
+    src: config.inc.php.j2
+    dest: "{{ mail_roundcube_web_root }}/config/config.inc.php"
+    owner: nginx
+    group: nginx
+    mode: "0640"
+  tags: [mail, roundcube]
+
+- name: Writable dirs (temp, logs) for nginx
+  ansible.builtin.file:
+    path: "{{ mail_roundcube_web_root }}/{{ item }}"
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: "0750"
+  loop: [temp, logs]
+  tags: [mail, roundcube]
+
+- name: Deploy the nginx vhost for webmail
+  ansible.builtin.template:
+    src: roundcube.nginx.conf.j2
+    dest: /etc/nginx/conf.d/roundcube.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload nginx
+  tags: [mail, roundcube]
+
+- name: SELinux — allow nginx to connect to PostgreSQL + IMAP/SMTP
+  ansible.posix.seboolean:
+    name: httpd_can_network_connect
+    state: true
+    persistent: true
+  tags: [mail, roundcube, selinux]
+
+- name: SELinux — let nginx write Roundcube temp/logs
+  ansible.builtin.command: "chcon -R -t httpd_sys_rw_content_t {{ mail_roundcube_web_root }}/temp {{ mail_roundcube_web_root }}/logs"
+  changed_when: false
+  tags: [mail, roundcube, selinux]
+
+- name: Open firewall for http/https
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    permanent: true
+    immediate: true
+    state: enabled
+  loop: [http, https]
+  tags: [mail, roundcube, firewall]
+
+- name: Enable and start php-fpm + nginx
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop: [php-fpm, nginx]
+  tags: [mail, roundcube]

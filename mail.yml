@@ -8,3 +8,4 @@
     - mail_dovecot
     - mail_rspamd
     - mail_dns
+    - mail_roundcube
