@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Mail platform restic backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/mail-backup.sh

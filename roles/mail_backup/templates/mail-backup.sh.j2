@@ -1,0 +1,22 @@
+#!/bin/bash
+# {{ ansible_managed }} — restic backup of mailboxes + mail PostgreSQL
+set -euo pipefail
+export RESTIC_REPOSITORY="{{ mail_backup_repo }}"
+export RESTIC_PASSWORD="{{ mail_backup_password }}"
+
+# Dump the mail database (consistent) then back it up alongside the maildirs
+DUMP=/var/backups/mailserver.sql
+mkdir -p /var/backups
+sudo -u postgres pg_dump {{ mail_backup_pg_db }} > "$DUMP"
+
+restic backup {{ mail_backup_paths | join(' ') }} "$DUMP" \
+  --tag mail --host {{ inventory_hostname }}
+
+# Retention
+restic forget --tag mail \
+  --keep-daily {{ mail_backup_keep_daily }} \
+  --keep-weekly {{ mail_backup_keep_weekly }} --prune
+
+# Integrity check
+restic check
+rm -f "$DUMP"

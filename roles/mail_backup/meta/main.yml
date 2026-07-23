@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: mail_backup
+  author: mcsredhat
+  description: restic-encrypted backup of mailboxes + mail database
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions: ["9"]
+  galaxy_tags: [rhel, mail, backup, restic, dr]
+dependencies: []

@@ -1,0 +1,57 @@
+---
+- name: Install restic
+  ansible.builtin.dnf:
+    name: restic
+    state: present
+  tags: [mail, backup]
+
+- name: Ensure the restic repo directory exists
+  ansible.builtin.file:
+    path: "{{ mail_backup_repo }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags: [mail, backup]
+
+- name: Initialize the restic repository (idempotent)
+  ansible.builtin.command:
+    cmd: "restic -r {{ mail_backup_repo }} init"
+  environment:
+    RESTIC_PASSWORD: "{{ mail_backup_password }}"
+  register: restic_init
+  changed_when: "'created restic repository' in restic_init.stdout"
+  failed_when:
+    - restic_init.rc != 0
+    - "'already exists' not in restic_init.stderr"
+  no_log: true
+  tags: [mail, backup]
+
+- name: Deploy the mail backup script
+  ansible.builtin.template:
+    src: mail-backup.sh.j2
+    dest: /usr/local/bin/mail-backup.sh
+    owner: root
+    group: root
+    mode: "0750"
+  tags: [mail, backup]
+
+- name: Deploy the backup systemd service + timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - mail-backup.service
+    - mail-backup.timer
+  tags: [mail, backup]
+
+- name: Enable the mail backup timer
+  ansible.builtin.systemd:
+    name: mail-backup.timer
+    state: started
+    enabled: true
+    daemon_reload: true
+  tags: [mail, backup]

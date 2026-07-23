@@ -1,0 +1,10 @@
+---
+# mail_backup — restic-encrypted backup of mailboxes + mail PostgreSQL (Phase 7f)
+mail_backup_repo: "/srv/restic/mail"           # local repo (lab); use S3/B2 in prod
+mail_backup_password: "{{ vault_mail_restic_password | default('mail-restic-change-me') }}"
+mail_backup_paths:
+  - /var/mail/vhosts
+mail_backup_pg_db: mailserver
+mail_backup_keep_daily: 7
+mail_backup_keep_weekly: 4
+mail_backup_schedule: "*-*-* 02:30:00"          # nightly 02:30

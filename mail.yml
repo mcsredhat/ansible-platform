@@ -10,3 +10,4 @@
     - mail_dns
     - mail_roundcube
     - mail_exporter
+    - mail_backup
