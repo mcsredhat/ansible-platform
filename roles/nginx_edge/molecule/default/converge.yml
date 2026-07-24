@@ -3,4 +3,5 @@
   hosts: all
   become: true
   roles:
+    - nginx_common
     - nginx_edge

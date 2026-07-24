@@ -8,7 +8,7 @@ driver:
   name: podman
 platforms:
   - name: fail2ban-el9
-    image: quay.io/rockylinux/rockylinux:9
+    image: quay.io/rockylinux/rockylinux:9-ubi-init
     command: /usr/sbin/init
     systemd: always
     privileged: true
@@ -21,6 +21,26 @@ provisioner:
     group_vars:
       all:
         subnet: 192.168.1.0/24
+        domain: platform.lab
+        base_prefix: 24
+        gateway: 192.168.1.254
+        dns_server: 192.168.1.254
+        vip: 192.168.1.10
+        webdata_uid: 1980
+        webdata_gid: 1980
+        tuned_profile: throughput-performance
+        loki_port: 3100
+        platform_hosts:
+          - ip: 192.168.1.11
+            names: edge1.platform.lab edge1
+          - ip: 192.168.1.21
+            names: web1.platform.lab web1
+          - ip: 192.168.1.31
+            names: data1.platform.lab data1
+          - ip: 192.168.1.41
+            names: obs1.platform.lab obs1
+          - ip: 192.168.1.51
+            names: mail1.platform.lab mail1
   env:
     ANSIBLE_ROLES_PATH: ../../../../roles
 verifier:

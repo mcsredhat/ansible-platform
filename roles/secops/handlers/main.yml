@@ -4,6 +4,7 @@
     daemon_reload: true
 
 - name: restart auditd
-  # auditd cannot be restarted by systemctl on RHEL; use service/augenrules path.
   ansible.builtin.command: /usr/sbin/service auditd restart
-  changed_when: true
+  register: secops_auditd_restart
+  changed_when: secops_auditd_restart.rc == 0
+  failed_when: false

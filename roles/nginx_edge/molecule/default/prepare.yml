@@ -1,17 +1,15 @@
 ---
 - name: Prepare
   hosts: all
-  become: true
+  gather_facts: false
+  become: false
   tasks:
-    - name: nginx baseline present (snippets + binary)
-      ansible.builtin.dnf:
-        name: nginx
-        state: present
-    - name: minimal snippets so the vhost includes resolve
-      ansible.builtin.copy:
-        dest: "/etc/nginx/snippets/{{ item }}"
-        content: "# test stub\n"
-        mode: "0644"
-      loop:
-        - ssl-params.conf
-        - security-headers.conf
+    - name: Install sudo
+      ansible.builtin.raw: dnf -y install sudo
+      changed_when: false
+    - name: Enable EPEL + CRB (best effort)
+      ansible.builtin.raw: sh -c 'dnf -y install epel-release dnf-plugins-core || true; dnf config-manager --set-enabled crb || true; exit 0'
+      changed_when: false
+    - name: Add upstream backend hostnames so `nginx -t` resolves them
+      ansible.builtin.raw: sh -c 'echo "127.0.0.1 web1 web2 data1 mail1 obs1" >> /etc/hosts; exit 0'
+      changed_when: false

@@ -1,10 +1,13 @@
 ---
-# webdata normally comes from nfs_server; create it here so the pool user exists.
 - name: Prepare
   hosts: all
-  become: true
+  gather_facts: false
+  become: false
   tasks:
-    - name: nginx present (socket group)
-      ansible.builtin.dnf:
-        name: nginx
-        state: present
+    - name: Install sudo (required for become in the minimal container)
+      ansible.builtin.raw: dnf -y install sudo
+      changed_when: false
+
+    - name: Enable EPEL + CRB (best effort, never fails the run)
+      ansible.builtin.raw: sh -c 'dnf -y install epel-release dnf-plugins-core || true; dnf config-manager --set-enabled crb || true; exit 0'
+      changed_when: false

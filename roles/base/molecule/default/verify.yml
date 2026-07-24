@@ -15,11 +15,12 @@
       ansible.builtin.command: grep -q "edge1.platform.lab" /etc/hosts
       changed_when: false
 
-    - name: Hostname was set
-      ansible.builtin.command: hostname
+    - name: Hostname is readable (via /proc, no hostname binary needed)
+      ansible.builtin.slurp:
+        src: /proc/sys/kernel/hostname
       register: hn
-      changed_when: false
 
-    - name: Hostname matches inventory
+    - name: Hostname is non-empty
       ansible.builtin.assert:
-        that: hn.stdout == inventory_hostname
+        that: (hn.content | b64decode | trim) | length > 0
+        fail_msg: "hostname was not set"

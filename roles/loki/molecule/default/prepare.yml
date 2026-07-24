@@ -1,0 +1,13 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Install sudo (required for become in the minimal container)
+      ansible.builtin.raw: dnf -y install sudo
+      changed_when: false
+
+    - name: Enable EPEL + CRB (best effort, never fails the run)
+      ansible.builtin.raw: sh -c 'dnf -y install epel-release dnf-plugins-core || true; dnf config-manager --set-enabled crb || true; exit 0'
+      changed_when: false

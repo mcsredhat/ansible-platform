@@ -2,10 +2,20 @@
 # secops — turn detective controls (auditd, AIDE, fail2ban) into metrics + logs
 # that feed Prometheus alerts, Loki LogQL rules, and the security dashboard.
 
-- name: Detect container runtime
+- name: Check for container marker files
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /run/.containerenv
+    - /.dockerenv
+  register: secops_container_markers
+  tags: always
+
+- name: Detect container runtime (virt fact OR marker file)
   ansible.builtin.set_fact:
-    secops_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
-      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+    secops_in_container: "{{ (ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'])
+      or (secops_container_markers.results | map(attribute='stat.exists') | select | list | length > 0) }}"
   tags: always
 
 - name: Ensure the textfile-collector directory exists

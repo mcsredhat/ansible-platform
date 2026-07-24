@@ -3,12 +3,26 @@
   hosts: all
   become: true
   tasks:
-    - name: platform config present
+    - name: Detect container (mariadb service is intentionally not started here)
+      ansible.builtin.set_fact:
+        in_container: "{{ ansible_facts['virtualization_type'] | default('') in ['container', 'podman', 'docker'] }}"
+
+    - name: Platform MariaDB config is present
       ansible.builtin.command: grep -q "innodb_buffer_pool_size" /etc/my.cnf.d/zz-platform.cnf
       changed_when: false
 
-    - name: wordpress database exists
+    - name: MariaDB packages are installed
+      ansible.builtin.package_facts:
+
+    - name: mariadb-server package present
+      ansible.builtin.assert:
+        that: "'mariadb-server' in ansible_facts.packages or 'mariadb' in ansible_facts.packages"
+        fail_msg: "mariadb-server not installed"
+
+    # Live DB checks only make sense on a real host where the service runs.
+    - name: WordPress database exists (real host only)
       ansible.builtin.command: mysql -N -e "SHOW DATABASES LIKE 'wordpress';"
       register: dbq
       changed_when: false
       failed_when: "'wordpress' not in dbq.stdout"
+      when: not in_container

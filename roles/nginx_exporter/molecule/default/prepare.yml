@@ -1,9 +1,15 @@
 ---
 - name: Prepare
   hosts: all
-  become: true
+  gather_facts: false
+  become: false
   tasks:
-    - name: Install nginx so /etc/nginx/conf.d exists and reload handler works
-      ansible.builtin.dnf:
-        name: nginx
-        state: present
+    - name: Install sudo (required for become in the minimal container)
+      ansible.builtin.raw: dnf -y install sudo
+      changed_when: false
+    - name: Enable EPEL + CRB (best effort)
+      ansible.builtin.raw: sh -c 'dnf -y install epel-release dnf-plugins-core || true; dnf config-manager --set-enabled crb || true; exit 0'
+      changed_when: false
+    - name: Install nginx (this role assumes nginx_common already ran)
+      ansible.builtin.raw: dnf -y install nginx
+      changed_when: false

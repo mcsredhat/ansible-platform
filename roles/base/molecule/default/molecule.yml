@@ -8,7 +8,7 @@ driver:
   name: podman
 platforms:
   - name: base-el9
-    image: quay.io/rockylinux/rockylinux:9
+    image: quay.io/rockylinux/rockylinux:9-ubi-init
     command: /usr/sbin/init
     systemd: always
     privileged: true
@@ -34,6 +34,13 @@ provisioner:
             names: edge1.platform.lab edge1
           - ip: 192.168.1.31
             names: data1.platform.lab data1
+        domain: platform.lab
+        subnet: 192.168.1.0/24
+        vip: 192.168.1.10
+        webdata_uid: 1980
+        webdata_gid: 1980
+        tuned_profile: throughput-performance
+        loki_port: 3100
   env:
     ANSIBLE_ROLES_PATH: ../../../../roles
 verifier:

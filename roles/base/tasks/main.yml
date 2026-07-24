@@ -20,6 +20,7 @@
     owner: root
     group: root
     mode: "0644"
+    unsafe_writes: true   # /etc/hosts is a bind-mount in containers; allow in-place write
   tags: [base, hostname]
 
 # --- packages & repos -----------------------------------------------------
@@ -42,6 +43,7 @@
   ansible.builtin.dnf:
     name: "{{ base_packages }}"
     state: present
+    allowerasing: true   # resolves curl-minimal vs curl conflict in minimal/container images
   tags: [base, packages]
 
 # --- time -----------------------------------------------------------------

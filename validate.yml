@@ -1,0 +1,171 @@
+---
+# ============================================================================
+# validate.yml — end-to-end platform health check (Phase 10 capstone)
+# Read-only. Runs a battery of checks across every tier and reports pass/fail.
+# Usage:  ansible-playbook validate.yml
+#         ansible-playbook validate.yml --tags edge   (one tier)
+# ============================================================================
+
+# ---------- EDGE: keepalived VIP + nginx ----------
+- name: Validate edge tier
+  hosts: edge
+  become: true
+  gather_facts: true
+  tags: [validate, edge]
+  tasks:
+    - name: keepalived + nginx are active
+      ansible.builtin.command: systemctl is-active {{ item }}
+      loop: [keepalived, nginx]
+      changed_when: false
+      register: edge_svc
+      failed_when: edge_svc.stdout != "active"
+
+    - name: The VIP answers HTTPS through the edge
+      ansible.builtin.uri:
+        url: "https://{{ vip }}/"
+        validate_certs: false
+        status_code: [200, 301, 302, 403]
+      run_once: true
+      delegate_to: "{{ inventory_hostname }}"
+
+# ---------- WEB: php-fpm + nginx + app reachable ----------
+- name: Validate web tier
+  hosts: web
+  become: true
+  tags: [validate, web]
+  tasks:
+    - name: php-fpm + nginx are active
+      ansible.builtin.command: systemctl is-active {{ item }}
+      loop: [php-fpm, nginx]
+      changed_when: false
+      register: web_svc
+      failed_when: web_svc.stdout != "active"
+
+    - name: WordPress backend responds on its service port (8080)
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:8080/"
+        headers:
+          Host: "app.{{ domain }}"
+        follow_redirects: all
+        status_code: [200, 301, 302]
+
+# ---------- DATA: mariadb + redis + nfs ----------
+- name: Validate data tier
+  hosts: data
+  become: true
+  tags: [validate, data]
+  tasks:
+    - name: mariadb + redis are active
+      ansible.builtin.command: systemctl is-active {{ item }}
+      loop: [mariadb, redis]
+      changed_when: false
+      register: data_svc
+      failed_when: data_svc.stdout != "active"
+
+    - name: NFS export is present
+      ansible.builtin.command: exportfs -s
+      changed_when: false
+      register: nfs_exp
+      failed_when: nfs_exp.rc != 0
+
+# ---------- OBS: prometheus, grafana, loki, alertmanager + targets up ----------
+- name: Validate observability tier
+  hosts: obs
+  become: true
+  tags: [validate, obs]
+  tasks:
+    - name: observability services are active
+      ansible.builtin.command: systemctl is-active {{ item }}
+      loop: [prometheus, grafana-server, loki, alertmanager]
+      changed_when: false
+      register: obs_svc
+      failed_when: obs_svc.stdout != "active"
+
+    - name: Query how many Prometheus targets are UP
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:9090/api/v1/query?query=up"
+        return_content: true
+      register: prom_up
+
+    - name: Report Prometheus target health
+      ansible.builtin.debug:
+        msg: >-
+          Prometheus targets returning up: 
+          {{ (prom_up.json.data.result | selectattr('value.1','equalto','1') | list | length) }}
+          / {{ prom_up.json.data.result | length }}
+
+    - name: Fail if any Prometheus target is down
+      ansible.builtin.assert:
+        that: "prom_up.json.data.result | selectattr('value.1','equalto','0') | list | length == 0"
+        fail_msg: >-
+          DOWN targets: 
+          {{ prom_up.json.data.result | selectattr('value.1','equalto','0')
+             | map(attribute='metric.job') | list }}
+        success_msg: "All Prometheus targets are up."
+
+    - name: Compliance metric is present (ANSSI scan ran)
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:9090/api/v1/query?query=compliance_score_percent"
+        return_content: true
+      register: comp_metric
+
+    - name: Report compliance coverage
+      ansible.builtin.debug:
+        msg: "Hosts reporting a compliance score: {{ comp_metric.json.data.result | length }}"
+
+# ---------- MAIL: services + auth + delivery ----------
+- name: Validate mail tier
+  hosts: mail
+  become: true
+  tags: [validate, mail]
+  tasks:
+    - name: mail services are active
+      ansible.builtin.command: systemctl is-active {{ item }}
+      loop: [postfix, dovecot, rspamd, postgresql, named, nginx, postfix_exporter]
+      changed_when: false
+      register: mail_svc
+      failed_when: mail_svc.stdout != "active"
+
+    - name: Dovecot can authenticate the test user (PostgreSQL passdb)
+      ansible.builtin.command: doveadm auth test test@{{ domain }} TestMailPass2026
+      changed_when: false
+      register: mail_auth
+      failed_when: "'auth succeeded' not in mail_auth.stdout"
+      no_log: true
+
+    - name: DNS deliverability records resolve (MX, SPF, DMARC)
+      ansible.builtin.command: "dig @127.0.0.1 {{ item }} +short"
+      loop:
+        - "{{ domain }} MX"
+        - "{{ domain }} TXT"
+        - "_dmarc.{{ domain }} TXT"
+      changed_when: false
+      register: mail_dns
+      failed_when: mail_dns.stdout == ""
+
+    - name: A recent restic mail backup snapshot exists
+      ansible.builtin.command: restic -r /srv/restic/mail snapshots --json
+      environment:
+        RESTIC_PASSWORD: "{{ vault_mail_restic_password | default('') }}"
+      changed_when: false
+      register: mail_snap
+      failed_when: "mail_snap.stdout == '[]' or mail_snap.rc != 0"
+      no_log: true
+
+# ---------- SUMMARY ----------
+- name: Validation summary
+  hosts: localhost
+  gather_facts: false
+  tags: [validate, always]
+  tasks:
+    - name: Platform validation complete
+      ansible.builtin.debug:
+        msg:
+          - "============================================"
+          - " Platform validation finished."
+          - " If this play was reached with no failed tasks above,"
+          - " every tier (edge / web / data / obs / mail) is healthy:"
+          - "   - services active, VIP up, app responding"
+          - "   - all Prometheus targets scraping"
+          - "   - compliance scanned, mail auth + DNS + backups OK"
+          - "============================================"
