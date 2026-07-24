@@ -13,10 +13,13 @@ alertmanager_allowed_source: "192.168.1.0/24"
 # Phase 5: alerts are visible in the UI only (no external notification).
 # Phase 6 will flip this on once mail1/Postfix exists and set
 # vault_alertmanager_smtp_pw for the mail1 relay.
-alertmanager_email_enabled: false
+alertmanager_email_enabled: true
 alertmanager_email_to: "admin@platform.lab"
-alertmanager_smtp_host: "mail1.platform.lab:25"
+alertmanager_smtp_host: "mail1.platform.lab:587"
 alertmanager_smtp_from: "alertmanager@platform.lab"
 
 alertmanager_download_url: >-
   https://github.com/prometheus/alertmanager/releases/download/v{{ alertmanager_version }}/alertmanager-{{ alertmanager_version }}.{{ alertmanager_arch }}.tar.gz
+alertmanager_smtp_user: "alertmanager@platform.lab"
+alertmanager_smtp_password: "{{ vault_alertmanager_smtp_pw | default('alert-mail-change-me') }}"
+alertmanager_smtp_insecure_tls: true

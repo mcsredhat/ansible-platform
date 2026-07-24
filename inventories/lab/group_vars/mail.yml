@@ -15,3 +15,8 @@ fail2ban_jails_mail:
     filter: dovecot
     logpath: /var/log/maillog
     maxretry: 5
+
+mail_accounts:
+  - { user: "test", domain: "platform.lab", password_plain: "TestMailPass2026" }
+  - { user: "alertmanager", domain: "platform.lab", password_plain: "{{ vault_alertmanager_smtp_pw | default('alert-mail-change-me') }}" }
+  - { user: "admin", domain: "platform.lab", password_plain: "AdminMailPass2026" }
