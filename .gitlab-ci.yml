@@ -115,6 +115,5 @@ molecule:
 molecule-nfs_server:
   <<: *molecule-base
   allow_failure: true
-  script:
-    - cd roles/nfs_server
-    - molecule test
+  variables:
+    ROLE: nfs_server
