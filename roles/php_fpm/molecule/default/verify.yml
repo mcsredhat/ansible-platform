@@ -10,7 +10,9 @@
       ansible.builtin.command: php -m
       register: mods
       changed_when: false
-    - ansible.builtin.assert:
+    - name: Assert required PHP extensions are loaded
+      ansible.builtin.assert:
         that:
           - "'mysqlnd' in mods.stdout"
-          - "'opcache' in mods.stdout"
+          - "'opcache' in (mods.stdout | lower)"
+        fail_msg: "Expected extensions not loaded. Loaded: {{ mods.stdout_lines }}"

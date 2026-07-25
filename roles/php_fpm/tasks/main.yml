@@ -8,16 +8,28 @@
   tags: always
 
 # --- PHP module stream ----------------------------------------------------
-- name: Reset the PHP DNF module
-  ansible.builtin.command: dnf -y module reset php
-  register: php_reset
-  changed_when: "'Nothing to do' not in php_reset.stdout"
+- name: Check which PHP module stream is enabled
+  ansible.builtin.command: dnf -y module list php --enabled
+  register: php_module_state
+  changed_when: false
+  failed_when: false
   tags: [php, module]
 
-- name: Enable the PHP DNF module stream {{ php_stream }}
+- name: Determine whether the target PHP stream is already enabled
+  ansible.builtin.set_fact:
+    php_stream_enabled: "{{ (php_stream + ' [e]') in php_module_state.stdout }}"
+  tags: [php, module]
+
+- name: Reset the PHP DNF module (only when target stream not active)
+  ansible.builtin.command: dnf -y module reset php
+  changed_when: true
+  when: not php_stream_enabled
+  tags: [php, module]
+
+- name: Enable the PHP {{ php_stream }} stream (only when target stream not active)
   ansible.builtin.command: "dnf -y module enable php:{{ php_stream }}"
-  register: php_enable
-  changed_when: "'Nothing to do' not in php_enable.stdout"
+  changed_when: true
+  when: not php_stream_enabled
   tags: [php, module]
 
 - name: Install PHP-FPM + extensions

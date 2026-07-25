@@ -68,7 +68,6 @@ molecule:
           - fail2ban
           - mariadb
           - redis
-          - nfs_server
           - nfs_client
           - nginx_common
           - nginx_edge
@@ -84,10 +83,5 @@ molecule:
           - nginx_exporter
           - mysqld_exporter
           - secops
+          - php_fpm
 
-molecule-php_fpm:
-  <<: *molecule-base
-  allow_failure: true
-  script:
-    - cd roles/php_fpm
-    - molecule test
