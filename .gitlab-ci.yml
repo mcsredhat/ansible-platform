@@ -15,6 +15,11 @@ stages:
 
 default:
   tags: [homelab]
+  before_script:
+    # every job runs in a fresh checkout; recreate the vault password file
+    - source /root/.venv/ansible/bin/activate || true
+    - echo "$ANSIBLE_VAULT_PASSWORD" > .vault-pass
+    - chmod 600 .vault-pass
 
 variables:
   ANSIBLE_FORCE_COLOR: "1"
