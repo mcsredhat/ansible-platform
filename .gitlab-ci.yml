@@ -48,7 +48,7 @@ syntax-check:
     - ansible-playbook site.yml --syntax-check
     - |
       for play in *.yml; do
-        case "$play" in site.yml) continue;; esac
+        case "$play" in site.yml|requirements.yml) continue;; esac
         echo "--- syntax-check: $play"
         ansible-playbook "$play" --syntax-check
       done
