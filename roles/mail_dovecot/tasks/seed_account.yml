@@ -1,21 +1,45 @@
 ---
-- name: "Hash the password for {{ acct.user }}@{{ acct.domain }}"
+- name: "Hash the password for account {{ acct.user ~ '@' ~ acct.domain }}"
   ansible.builtin.command:
     cmd: "doveadm pw -s SHA512-CRYPT -p {{ acct.password_plain }}"
   register: pwhash
   changed_when: false
   no_log: true
+  tags: [mail, dovecot, accounts]
 
-- name: "Insert mailbox {{ acct.user }}@{{ acct.domain }} into PostgreSQL"
+- name: "Ensure virtual_domains contains {{ acct.domain }}"
+  community.postgresql.postgresql_query:
+    db: "{{ mail_pg_db }}"
+    query: "INSERT INTO virtual_domains (name) VALUES (%s) ON CONFLICT (name) DO NOTHING"
+    positional_args:
+      - "{{ acct.domain }}"
+  become: true
+  become_user: postgres
+  tags: [mail, dovecot, accounts]
+
+- name: "Insert or update mailbox for {{ acct.user ~ '@' ~ acct.domain }}"
   community.postgresql.postgresql_query:
     db: "{{ mail_pg_db }}"
     query: >
       INSERT INTO virtual_users (domain_id, email, password)
-      VALUES ((SELECT id FROM virtual_domains WHERE name=%s), %s, %s)
-      ON CONFLICT (email) DO UPDATE SET password=EXCLUDED.password
-    positional_args:
-      - "{{ acct.domain }}"
-      - "{{ acct.user }}@{{ acct.domain }}"
-      - "{{ pwhash.stdout }}"
+      VALUES ((SELECT id FROM virtual_domains WHERE name = %(domain)s), %(email)s, %(pw)s)
+      ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password
+    named_args:
+      domain: "{{ acct.domain }}"
+      email: "{{ acct.user }}@{{ acct.domain }}"
+      pw: "{{ pwhash.stdout }}"
+  become: true
   become_user: postgres
-  no_log: true
+  tags: [mail, dovecot, accounts]
+
+- name: "Confirm mailbox is present for {{ acct.user ~ '@' ~ acct.domain }}"
+  community.postgresql.postgresql_query:
+    db: "{{ mail_pg_db }}"
+    query: "SELECT email FROM virtual_users WHERE email = %(email)s"
+    named_args:
+      email: "{{ acct.user }}@{{ acct.domain }}"
+  become: true
+  become_user: postgres
+  register: seed_check
+  failed_when: seed_check.rowcount | default(0) < 1
+  tags: [mail, dovecot, accounts]

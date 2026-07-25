@@ -48,6 +48,7 @@
           Host: "app.{{ domain }}"
         follow_redirects: all
         status_code: [200, 301, 302]
+      # web nodes serve the app on 8080 behind the app vhost; edge proxies here.
 
 # ---------- DATA: mariadb + redis + nfs ----------
 - name: Validate data tier
@@ -91,15 +92,15 @@
       ansible.builtin.debug:
         msg: >-
           Prometheus targets returning up:
-          {{ (prom_up.json.data.result | selectattr('value.1','equalto','1') | list | length) }}
+          {{ (prom_up.json.data.result | selectattr('value.1', 'equalto', '1') | list | length) }}
           / {{ prom_up.json.data.result | length }}
 
     - name: Fail if any Prometheus target is down
       ansible.builtin.assert:
-        that: "prom_up.json.data.result | selectattr('value.1','equalto','0') | list | length == 0"
+        that: "prom_up.json.data.result | selectattr('value.1', 'equalto', '0') | list | length == 0"
         fail_msg: >-
           DOWN targets:
-          {{ prom_up.json.data.result | selectattr('value.1','equalto','0')
+          {{ prom_up.json.data.result | selectattr('value.1', 'equalto', '0')
              | map(attribute='metric.job') | list }}
         success_msg: "All Prometheus targets are up."
 

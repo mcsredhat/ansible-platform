@@ -32,6 +32,7 @@
   community.postgresql.postgresql_db:
     name: "{{ mail_pg_db }}"
     state: present
+  become: true
   become_user: postgres
   tags: [mail, postgres]
 
@@ -42,6 +43,7 @@
     password: "{{ mail_pg_password }}"
     encrypted: true
     state: present
+  become: true
   become_user: postgres
   no_log: true
   tags: [mail, postgres]
@@ -60,6 +62,7 @@
     name: "{{ mail_pg_db }}"
     state: restore
     target: /tmp/mail-schema.sql
+  become: true
   become_user: postgres
   tags: [mail, postgres]
 
@@ -70,6 +73,7 @@
     privs: SELECT
     objs: virtual_domains,virtual_users,virtual_aliases
     type: table
+  become: true
   become_user: postgres
   tags: [mail, postgres]
 
@@ -79,6 +83,7 @@
     query: "INSERT INTO virtual_domains (name) VALUES (%s) ON CONFLICT (name) DO NOTHING"
     positional_args:
       - "{{ item }}"
+  become: true
   become_user: postgres
   loop: "{{ mail_virtual_domains }}"
   tags: [mail, postgres]

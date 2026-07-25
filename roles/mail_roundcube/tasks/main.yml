@@ -9,6 +9,7 @@
   community.postgresql.postgresql_db:
     name: "{{ mail_rc_db }}"
     state: present
+  become: true
   become_user: postgres
   tags: [mail, roundcube]
 
@@ -19,6 +20,7 @@
     password: "{{ mail_rc_db_password }}"
     encrypted: true
     state: present
+  become: true
   become_user: postgres
   no_log: true
   tags: [mail, roundcube]
@@ -30,6 +32,7 @@
     privs: ALL
     type: database
     obj: "{{ mail_rc_db }}"
+  become: true
   become_user: postgres
   tags: [mail, roundcube]
 
@@ -70,7 +73,7 @@
   register: rc_schema
   tags: [mail, roundcube]
 
-- name: Mark schema loaded
+- name: Mark schema loaded  # noqa: no-handler
   ansible.builtin.file:
     path: /var/lib/pgsql/.roundcube_schema_loaded
     state: touch
@@ -127,6 +130,19 @@
     state: enabled
   loop: [http, https]
   tags: [mail, roundcube, firewall]
+
+- name: Run php-fpm as nginx (RHEL defaults to apache, which can't read nginx-owned config)
+  ansible.builtin.replace:
+    path: /etc/php-fpm.d/www.conf
+    regexp: '^{{ item.k }} = apache'
+    replace: '{{ item.k }} = nginx'
+  loop:
+    - { k: 'user' }
+    - { k: 'group' }
+    - { k: 'listen.owner' }
+    - { k: 'listen.group' }
+  notify: restart php-fpm
+  tags: [mail, roundcube]
 
 - name: Enable and start php-fpm + nginx
   ansible.builtin.systemd:

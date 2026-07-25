@@ -9,6 +9,8 @@
     enabled: true
   tags: [mail, rspamd]
 
+# RHEL 9 disables SHA1 signatures; Rspamd's key trips this on rpm --import.
+# Temporarily allow the legacy crypto policy so dnf can import the key, then restore.
 - name: Detect current crypto policy
   ansible.builtin.command: update-crypto-policies --show
   register: mail_crypto_policy
@@ -58,10 +60,11 @@
       -k {{ mail_dkim_key }}
     creates: "{{ mail_dkim_key }}"
   register: dkim_keygen
+  become: true
   become_user: _rspamd
   tags: [mail, rspamd, dkim]
 
-- name: Save the DKIM DNS record (TXT) for publishing
+- name: Save the DKIM DNS record (TXT) for publishing  # noqa: no-handler
   ansible.builtin.copy:
     content: "{{ dkim_keygen.stdout }}\n"
     dest: "{{ mail_dkim_key_dir }}/{{ mail_domain }}.{{ mail_dkim_selector }}.txt"
