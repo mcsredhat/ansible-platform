@@ -22,21 +22,21 @@ provisioner:
   inventory:
     host_vars:
       base-el9:
-        node_ip: 192.168.1.99
+        node_ip: 10.50.1.99
     group_vars:
       all:
         base_manage_network: false
         base_prefix: 24
-        gateway: 192.168.1.254
-        dns_server: 192.168.1.254
+        gateway: 10.50.1.254
+        dns_server: 10.50.1.254
         platform_hosts:
-          - ip: 192.168.1.11
+          - ip: 10.50.1.11
             names: edge1.platform.lab edge1
-          - ip: 192.168.1.31
+          - ip: 10.50.1.31
             names: data1.platform.lab data1
         domain: platform.lab
-        subnet: 192.168.1.0/24
-        vip: 192.168.1.10
+        subnet: 10.50.1.0/24
+        vip: 10.50.1.10
         webdata_uid: 1980
         webdata_gid: 1980
         tuned_profile: throughput-performance
