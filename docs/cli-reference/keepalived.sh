@@ -26,7 +26,7 @@ MY_IP=$(ip -4 addr show "$IFACE" | awk '/inet /{print $2}' | cut -d/ -f1)
 #   edge2: STATE=BACKUP  PRIORITY=100
 STATE=MASTER          # or BACKUP on the other edge node
 PRIORITY=150          # or 100 on the other edge node
-PEER_IP=192.168.1.12  # the OTHER edge node's IP (12 if you're 11, and vice versa)
+PEER_IP=10.50.1.12  # the OTHER edge node's IP (12 if you're 11, and vice versa)
 
 cat > /etc/keepalived/keepalived.conf <<KACONF
 global_defs {
@@ -61,7 +61,7 @@ vrrp_instance VI_APP {
     }
 
     virtual_ipaddress {
-        192.168.1.10/24
+        10.50.1.10/24
     }
 
     track_script {
@@ -75,13 +75,13 @@ KACONF
 # Firewall — allow VRRP protocol (not a port; it's IP protocol 112) from the subnet,
 # only if firewalld is actually active:
 if systemctl is-active --quiet firewalld; then
-  firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.0/24 protocol value=vrrp accept'
+  firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.50.1.0/24 protocol value=vrrp accept'
   firewall-cmd --reload
 fi
 
 systemctl enable --now keepalived
 
 # --- Operating: who holds the VIP right now? ---
-ip addr show | grep 192.168.1.10        # only the MASTER (or a failed-over BACKUP) shows it
+ip addr show | grep 10.50.1.10        # only the MASTER (or a failed-over BACKUP) shows it
 systemctl status keepalived
 journalctl -u keepalived -f             # watch state transitions live (MASTER/BACKUP/FAULT)

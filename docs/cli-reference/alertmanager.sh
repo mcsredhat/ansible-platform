@@ -53,7 +53,7 @@ UNIT
 systemctl daemon-reload
 systemctl enable --now alertmanager
 
-firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.0/24 port port=9093 protocol=tcp accept'
+firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.50.1.0/24 port port=9093 protocol=tcp accept'
 firewall-cmd --reload
 
 # --- Test: fire a synthetic alert and watch it email ---

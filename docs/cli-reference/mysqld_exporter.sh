@@ -46,7 +46,7 @@ systemctl daemon-reload
 systemctl enable --now mysqld_exporter
 
 # Firewall — ONLY obs1 may scrape
-firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.41 port port=9104 protocol=tcp accept'
+firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.50.1.41 port port=9104 protocol=tcp accept'
 firewall-cmd --reload
 
 curl -s localhost:9104/metrics | head -5

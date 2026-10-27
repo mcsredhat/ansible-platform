@@ -11,7 +11,7 @@ dnf -y install restic rsync
 # Off-host targets (uncomment ONE for real 3-2-1; the local path below is only
 # for validating the mechanics before you have real off-host storage):
 REPO=/srv/restic-repo
-# REPO='sftp:backup@192.168.1.5:/srv/restic'     # control node / NAS over SSH
+# REPO='sftp:backup@control.platform.lab:/srv/restic'     # control node / NAS over SSH
 # REPO='s3:http://minio.lab:9000/restic'          # object storage
 
 mkdir -p /etc/restic

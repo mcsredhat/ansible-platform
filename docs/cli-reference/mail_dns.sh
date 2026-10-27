@@ -9,12 +9,13 @@
 
 dnf -y install bind bind-utils
 
+# role: the A record is mail_server_ip (= mail1's node_ip)
 cat > /var/named/platform.lab.zone <<'ZONE'
 $TTL 3600
 @   IN SOA mail1.platform.lab. admin.platform.lab. (2026072601 3600 900 604800 86400)
 @   IN NS  mail1.platform.lab.
 @   IN MX  10 mail.platform.lab.
-mail IN A 192.168.1.51
+mail IN A 10.50.1.51
 ; SPF — only our MX may send for this domain (hard fail others)
 @   IN TXT "v=spf1 mx -all"
 ; DKIM — paste the p= value from mail_rspamd.sh's generated .txt file

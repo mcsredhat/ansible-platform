@@ -7,11 +7,11 @@ and connects to the same DB and the same NFS uploads share. Once it's up, the ed
 load-balances blue/green. Tested on RHEL 9.7, nginx (appstream), PHP-FPM 8.2, enforcing SELinux.
 
 > **Prereq:** data1 (MariaDB + NFS) is up and web1 is live (the site returns 200 through the VIP).
-> You can SSH from web1 to web2 as root (`ssh-copy-id root@192.168.1.22` if needed).
+> You can SSH from web1 to web2 as root (`ssh-copy-id root@10.50.1.22` if needed).
 
 ## What differs from web1
 
-1. hostname `web2`, IP `192.168.1.22`
+1. hostname `web2`, IP `10.50.1.22`
 2. `X-Backend "web2-green"` in the vhost
 3. WordPress files **rsync'd from web1** (identical `wp-config.php` + salts) — **not** re-downloaded, **not** re-installed
 4. **no `wp core install`** — the DB already has the installed site
@@ -40,19 +40,19 @@ dnf -y install chrony firewalld policycoreutils-python-utils vim curl tar jq
 
 hostnamectl set-hostname web2
 cat >> /etc/hosts <<'EOF'
-192.168.1.10  vip.platform.lab  app.platform.lab
-192.168.1.11  edge1.platform.lab edge1
-192.168.1.12  edge2.platform.lab edge2
-192.168.1.21  web1.platform.lab  web1
-192.168.1.22  web2.platform.lab  web2
-192.168.1.31  data1.platform.lab data1
-192.168.1.41  obs1.platform.lab  obs1
+10.50.1.10  vip.platform.lab  app.platform.lab
+10.50.1.11  edge1.platform.lab edge1
+10.50.1.12  edge2.platform.lab edge2
+10.50.1.21  web1.platform.lab  web1
+10.50.1.22  web2.platform.lab  web2
+10.50.1.31  data1.platform.lab data1
+10.50.1.41  obs1.platform.lab  obs1
 EOF
 
 NIC=$(ip -br a | awk '$1!="lo"{print $1; exit}'); echo "NIC=$NIC"
 CON=$(nmcli -g NAME con show --active | head -1)
-nmcli con mod "$CON" ipv4.addresses 192.168.1.22/24 ipv4.gateway 192.168.1.254 \
-  ipv4.dns 192.168.1.254 ipv4.method manual
+nmcli con mod "$CON" ipv4.addresses 10.50.1.22/24 ipv4.gateway 10.50.1.254 \
+  ipv4.dns 10.50.1.254 ipv4.method manual
 systemctl restart NetworkManager
 nmcli con up "$CON"                      # reconnect on .22
 
@@ -60,7 +60,7 @@ systemctl enable --now chronyd firewalld
 setenforce 1; sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
 ```
 
-**Verify:** `hostname` → web2, `getenforce` → Enforcing, `ping -c1 192.168.1.31` (reach data1).
+**Verify:** `hostname` → web2, `getenforce` → Enforcing, `ping -c1 10.50.1.31` (reach data1).
 
 ---
 
@@ -87,7 +87,7 @@ id nginx        # uid=980 gid=980  — must match web1
 ## 3. Firewall + SELinux (port 8080, DB, NFS)
 
 ```bash
-firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.0/24 port port=8080 protocol=tcp accept'
+firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.50.1.0/24 port port=8080 protocol=tcp accept'
 firewall-cmd --reload
 
 semanage port -a -t http_port_t -p tcp 8080
@@ -128,7 +128,7 @@ server {
 
     add_header X-Backend "web2-green" always;     # <-- the only difference from web1
 
-    set_real_ip_from 192.168.1.0/24;
+    set_real_ip_from 10.50.1.0/24;
     real_ip_header   X-Forwarded-For;
 
     location = /healthz { default_type text/plain; return 200 "web2 ok\n"; }
@@ -159,13 +159,13 @@ curl -s -o /dev/null -w 'healthz: %{http_code}\n' http://127.0.0.1:8080/healthz 
 
 ```bash
 # === run FROM web1 — exclude the uploads dir (it's the shared NFS mount, mounted separately on web2) ===
-rsync -a --exclude='wp-content/uploads' /var/www/wordpress/ root@192.168.1.22:/var/www/wordpress/
+rsync -a --exclude='wp-content/uploads' /var/www/wordpress/ root@10.50.1.22:/var/www/wordpress/
 ```
 
 ```bash
 # === back on web2 ===
 php -l /var/www/wordpress/wp-config.php                 # "No syntax errors detected"
-grep -E "WP_HOME|WP_SITEURL|192.168.1.31" /var/www/wordpress/wp-config.php   # same DB + URLs as web1
+grep -E "WP_HOME|WP_SITEURL|10.50.1.31" /var/www/wordpress/wp-config.php   # same DB + URLs as web1
 # salts match web1 because wp-config came from web1 (do NOT regenerate them)
 ```
 
@@ -191,7 +191,7 @@ systemctl restart php-fpm nginx
 ```bash
 dnf -y install nfs-utils
 mkdir -p /var/www/wordpress/wp-content/uploads
-echo '192.168.1.31:/export/wordpress/uploads  /var/www/wordpress/wp-content/uploads  nfs  defaults,_netdev,nofail  0 0' >> /etc/fstab
+echo '10.50.1.31:/export/wordpress/uploads  /var/www/wordpress/wp-content/uploads  nfs  defaults,_netdev,nofail  0 0' >> /etc/fstab
 systemctl daemon-reload
 mount -a
 df -h | grep uploads                                   # data1 export mounted
@@ -209,7 +209,7 @@ restorecon -Rv /var/www/wordpress/wp-content/uploads
 # web2 reaches the same DB that web1 installed -> it serves the real site, not a 500/install
 curl -s -o /dev/null -w 'healthz: %{http_code}\n' http://127.0.0.1:8080/healthz                # 200
 # through the edge (which sets X-Forwarded-Proto), confirm web2 specifically answers:
-curl -sk -D - -o /dev/null -H 'X-Forwarded-Proto: https' http://192.168.1.22:8080/ | grep -iE 'HTTP/|x-backend'   # 200, X-Backend: web2-green
+curl -sk -D - -o /dev/null -H 'X-Forwarded-Proto: https' http://10.50.1.22:8080/ | grep -iE 'HTTP/|x-backend'   # 200, X-Backend: web2-green
 ```
 
 (A direct `curl http://127.0.0.1:8080/` may 301 to https because `WP_HOME` is https — that's
@@ -223,7 +223,7 @@ correct; test with the `X-Forwarded-Proto: https` header or through the VIP.)
 
 ```bash
 for i in $(seq 8); do
-  curl -sk -D - -o /dev/null --resolve app.platform.lab:443:192.168.1.10 https://app.platform.lab/ \
+  curl -sk -D - -o /dev/null --resolve app.platform.lab:443:10.50.1.10 https://app.platform.lab/ \
     | awk 'tolower($0) ~ /x-backend/ {print}'
 done
 # expect clean alternation: web1-blue, web2-green, web1-blue, web2-green, ...
@@ -240,12 +240,12 @@ systemctl stop nginx
 
 # from the client — show the backend AND prove no 502s (run both):
 for i in $(seq 6); do
-  curl -sk -D - -o /dev/null --resolve app.platform.lab:443:192.168.1.10 https://app.platform.lab/ \
+  curl -sk -D - -o /dev/null --resolve app.platform.lab:443:10.50.1.10 https://app.platform.lab/ \
     | awk 'tolower($0) ~ /x-backend/ {print}'
 done
 # expect: EVERY line "web2-green" (web1 is down)
 for i in $(seq 6); do
-  curl -sk -o /dev/null -w '%{http_code} ' --resolve app.platform.lab:443:192.168.1.10 https://app.platform.lab/
+  curl -sk -o /dev/null -w '%{http_code} ' --resolve app.platform.lab:443:10.50.1.10 https://app.platform.lab/
 done; echo
 # expect: all 200 (no 502 — the edge marked web1 down via max_fails and routed to web2-green)
 
@@ -267,7 +267,7 @@ blue/green alternation when both are up, and all-`web2-green`/all-200 when web1 
 nginx -t && systemctl is-active nginx php-fpm firewalld         # active
 id nginx                                                        # uid=980 gid=980 (matches web1)
 php -l /var/www/wordpress/wp-config.php                         # no syntax errors
-diff <(ssh root@192.168.1.21 'grep AUTH_KEY /var/www/wordpress/wp-config.php') \
+diff <(ssh root@10.50.1.21 'grep AUTH_KEY /var/www/wordpress/wp-config.php') \
      <(grep AUTH_KEY /var/www/wordpress/wp-config.php)          # empty = salts match web1
 df -h | grep uploads                                            # NFS share mounted
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz   # 200
@@ -283,7 +283,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz   # 200
 | copied files owned by wrong UID | nginx not pinned to 980 before rsync | pin UID 980 (step 2), re-rsync or `find -xdev -exec chown nginx:nginx {} +` |
 | `wp-content/uploads` duplicated/huge on local disk | rsync didn't exclude the share | `--exclude='wp-content/uploads'` (step 6); remove the local copy, then mount NFS |
 | logged-in users logged out when LB flips nodes | salts differ (wp-config regenerated, not copied) | rsync web1's `wp-config.php`; don't regenerate salts (step 6) |
-| web2 shows install wizard / different site | web2 pointed at a different/empty DB | confirm `wp-config.php` DB host = 192.168.1.31 and creds match (step 6) |
+| web2 shows install wizard / different site | web2 pointed at a different/empty DB | confirm `wp-config.php` DB host = 10.50.1.31 and creds match (step 6) |
 | only one `X-Backend` value ever appears | other backend down, or edge stuck | check both nginx active; `least_conn` favors idle — generate more concurrent load |
 | failover loop is all-200 but you can't tell if it failed over | status code alone can't distinguish failover from "both up" | check `X-Backend` while one node is stopped — every line should be the surviving node (step 10) |
 | stopped web1 but requests still show `web1-blue` | edge still within `fail_timeout` / fewer than `max_fails` errors seen | wait a few seconds; the edge bypasses it after `max_fails=3` within `fail_timeout=15s` |
@@ -301,7 +301,7 @@ and fails over between them. Five of six nodes done:
 
 - ✅ edge1 ✅ edge2 ✅ web1 ✅ data1 ✅ web2 — ⬜ obs1
 
-The last node, **obs1 (192.168.1.41)**, is observability: Prometheus scraping exporters
+The last node, **obs1 (10.50.1.41)**, is observability: Prometheus scraping exporters
 (node_exporter on every host, nginx/stub_status, php-fpm_exporter, mysqld_exporter), Grafana
 dashboards, and Alertmanager — so you can see the load balancing, failovers, and resource use
 across the whole platform you've built.

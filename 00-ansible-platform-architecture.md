@@ -214,8 +214,8 @@ Dependency chain straight out of the platform:
 
 | Variable | Example | Owned by |
 |---|---|---|
-| `subnet` | `192.168.1.0/24` | group_vars/all |
-| `vip` | `192.168.1.10` | group_vars/all |
+| `subnet` | `10.50.1.0/24` | group_vars/all |
+| `vip` | `10.50.1.10` | group_vars/all |
 | `webdata_uid` / `webdata_gid` | `980` / `980` | group_vars/all |
 | `backend_marker` | `web1-blue` / `web2-green` | host_vars |
 | `wp_role` | `install` / `serve` | host_vars |

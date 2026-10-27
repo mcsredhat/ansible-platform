@@ -11,12 +11,12 @@ hostnamectl set-hostname web1.platform.lab
 # /etc/hosts rendered from one platform map (unsafe_writes because /etc/hosts
 # is a bind-mount in containers — needed for molecule, harmless on real hosts):
 cat >> /etc/hosts <<'HOSTS'
-192.168.1.10  vip.platform.lab app.platform.lab
-192.168.1.11  edge1.platform.lab edge1
-192.168.1.21  web1.platform.lab web1
-192.168.1.31  data1.platform.lab data1
-192.168.1.41  obs1.platform.lab obs1
-192.168.1.51  mail1.platform.lab mail1
+10.50.1.10  vip.platform.lab app.platform.lab
+10.50.1.11  edge1.platform.lab edge1
+10.50.1.21  web1.platform.lab web1
+10.50.1.31  data1.platform.lab data1
+10.50.1.41  obs1.platform.lab obs1
+10.50.1.51  mail1.platform.lab mail1
 HOSTS
 
 # 2. Repos — CodeReady Builder (RHEL subscription-manager) + EPEL
@@ -38,15 +38,15 @@ chronyc sources
 #    or accept one reconnect.
 #
 # >>> SET THIS per node before running — example below is web1's address: <<<
-#   edge1=192.168.1.11  edge2=192.168.1.12  web1=192.168.1.21  web2=192.168.1.22
-#   data1=192.168.1.31  obs1=192.168.1.41   mail1=192.168.1.51
-NODE_IP=192.168.1.21/24
+#   edge1=10.50.1.11  edge2=10.50.1.12  web1=10.50.1.21  web2=10.50.1.22
+#   data1=10.50.1.31  obs1=10.50.1.41   mail1=10.50.1.51
+NODE_IP=10.50.1.21/24
 
 IFACE=$(nmcli -t -f DEVICE,STATE device | awk -F: '$2=="connected"{print $1; exit}')
 nmcli connection modify "$IFACE" \
   ipv4.addresses "$NODE_IP" \
-  ipv4.gateway 192.168.1.1 \
-  ipv4.dns 192.168.1.1 \
+  ipv4.gateway 10.50.1.254 \
+  ipv4.dns 10.50.1.254 \
   ipv4.method manual
 nmcli connection up "$IFACE"     # applies immediately — may briefly drop the connection
 

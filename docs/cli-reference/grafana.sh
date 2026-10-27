@@ -80,7 +80,7 @@ fi
 # 9. Firewall — only if firewalld is actually active (the role checks first),
 #    restricted to the management subnet, not open to the world:
 if systemctl is-active --quiet firewalld; then
-  firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.0/24 port port=3000 protocol=tcp accept'
+  firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.50.1.0/24 port port=3000 protocol=tcp accept'
   firewall-cmd --reload
 fi
 

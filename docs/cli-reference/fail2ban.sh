@@ -17,7 +17,7 @@ bantime  = 1h
 findtime = 10m
 maxretry = 5
 banaction = firewallcmd-rich-rules
-ignoreip = 127.0.0.1/8 ::1 192.168.1.0/24
+ignoreip = 127.0.0.1/8 ::1 10.50.1.0/24
 
 [sshd]
 enabled = true

@@ -8,7 +8,7 @@
 # EDGE tier (edge1/edge2) — keepalived + nginx + the VIP answers HTTPS
 # ---------------------------------------------------------------------------
 systemctl is-active keepalived nginx            # both -> active
-curl -sk -o /dev/null -w "%{http_code}\n" https://192.168.1.10/    # -> 200/301/302/403
+curl -sk -o /dev/null -w "%{http_code}\n" https://10.50.1.10/    # -> 200/301/302/403
 
 # ---------------------------------------------------------------------------
 # WEB tier (web1/web2) — php-fpm + nginx + WordPress backend on :8080

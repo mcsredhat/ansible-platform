@@ -51,7 +51,8 @@ postconf -e "smtpd_milters = inet:127.0.0.1:11332"
 postconf -e "non_smtpd_milters = inet:127.0.0.1:11332"
 postconf -e "milter_protocol = 6"
 postconf -e "milter_default_action = accept"
-postconf -e "mynetworks = 127.0.0.0/8 [::1]/128 192.168.1.0/24"
+# role: mail_mynetworks = loopback + {{ subnet }}
+postconf -e "mynetworks = 127.0.0.0/8 [::1]/128 10.50.1.0/24"
 postconf -e "smtpd_recipient_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination"
 
 # Enable submission (587) + smtps (465) in master.cf — uncomment the stock

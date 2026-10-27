@@ -72,7 +72,7 @@ systemctl daemon-reload
 systemctl enable --now prometheus
 
 # Firewall — the management subnet (people/Grafana reaching the UI), not just obs1
-firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.0/24 port port=9090 protocol=tcp accept'
+firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.50.1.0/24 port port=9090 protocol=tcp accept'
 firewall-cmd --reload
 
 # --- Operating (the query API is gold for scripting/validation) ---

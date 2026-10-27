@@ -24,7 +24,7 @@ setsebool -P nfs_export_all_rw on
 # owning files — php-fpm writes as uid 1980, which lines up with the dir
 # owner on both ends, which is the entire point of the shared-identity pattern.
 cat > /etc/exports.d/wordpress.exports <<'EXPORTS'
-/srv/wordpress/uploads 192.168.1.0/24(rw,sync,no_subtree_check,root_squash)
+/srv/wordpress/uploads 10.50.1.0/24(rw,sync,no_subtree_check,root_squash)
 EXPORTS
 exportfs -rav
 exportfs -s

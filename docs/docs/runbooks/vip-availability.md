@@ -4,11 +4,11 @@
 **Severity:** critical (probe down / fast burn) / warning (slow burn)
 
 ## 1. Confirm user impact
-- `curl -sk -o /dev/null -w '%{http_code}\n' --resolve app.platform.lab:443:192.168.1.10 https://app.platform.lab/` from the control node.
+- `curl -sk -o /dev/null -w '%{http_code}\n' --resolve app.platform.lab:443:10.50.1.10 https://app.platform.lab/` from the control node.
 - Grafana → SLO / Error Budget → current availability + burn rate.
 
 ## 2. Locate the failure in the stack
-- **VIP itself:** `ansible edge -b -m shell -a "ip -4 -o addr show | grep 192.168.1.10"` — is the VIP assigned to exactly one edge?
+- **VIP itself:** `ansible edge -b -m shell -a "ip -4 -o addr show | grep 10.50.1.10"` — is the VIP assigned to exactly one edge?
 - **keepalived:** `ansible edge -b -m shell -a "systemctl is-active keepalived; env -i /etc/keepalived/chk_nginx.sh; echo rc=$?"` — both should be healthy.
 - **edge nginx:** `ansible edge -b -m shell -a "systemctl is-active nginx"`.
 - **web backends:** `ansible web -b -m shell -a "systemctl is-active nginx php-fpm; curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz"`.

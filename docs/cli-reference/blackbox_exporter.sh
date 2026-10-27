@@ -46,4 +46,4 @@ systemctl enable --now blackbox_exporter
 # unless Prometheus is on a different host.
 
 # Test a probe manually (this is what Prometheus does via relabeling):
-curl -s "http://127.0.0.1:9115/probe?target=https://192.168.1.10/&module=http_2xx" | grep probe_success
+curl -s "http://127.0.0.1:9115/probe?target=https://10.50.1.10/&module=http_2xx" | grep probe_success

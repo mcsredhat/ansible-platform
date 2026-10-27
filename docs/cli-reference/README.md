@@ -7,7 +7,7 @@ interview). Every file has copy-paste commands with comments explaining *what*
 and *why*.
 
 > These mirror `roles/<name>/tasks/main.yml`. Placeholders like `CHANGE_ME`,
-> IPs, and hostnames match the lab (`platform.lab`, `192.168.1.0/24`) — adapt to
+> IPs, and hostnames match the lab (`platform.lab`, `10.50.1.0/24`) — adapt to
 > your environment. Read before you run; several commands change system state.
 
 ## How to run a single concern

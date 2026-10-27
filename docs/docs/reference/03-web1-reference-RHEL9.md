@@ -6,7 +6,7 @@ the edge. Every fix from the live build is folded in. Tested on RHEL 9.7, nginx 
 PHP-FPM 8.2, WordPress 6.x, enforcing SELinux.
 
 > **Dependency:** WordPress needs the **database** and **shared uploads** from **data1
-> (192.168.1.31)**, built separately. This file stands up web1's full web stack now; the two
+> (10.50.1.31)**, built separately. This file stands up web1's full web stack now; the two
 > steps marked **⟂ NEEDS data1** (NFS mount, WordPress install) finish once data1 exists. The
 > milestone you reach here is the expected **"Error establishing a database connection" (500)**
 > — proof the whole path works, waiting only on the DB.
@@ -14,10 +14,10 @@ PHP-FPM 8.2, WordPress 6.x, enforcing SELinux.
 ## IP plan & data flow
 
 ```
-client ──TLS──> VIP 192.168.1.10 (edge1/edge2)  ──HTTP :8080──>  web1 192.168.1.21 (blue)
-                                                 └─HTTP :8080──>  web2 192.168.1.22 (green)
+client ──TLS──> VIP 10.50.1.10 (edge1/edge2)  ──HTTP :8080──>  web1 10.50.1.21 (blue)
+                                                 └─HTTP :8080──>  web2 10.50.1.22 (green)
                                                                     │  MySQL :3306 / NFS
-                                                                    └──>  data1 192.168.1.31
+                                                                    └──>  data1 10.50.1.31
 ```
 
 ## web-tier gotchas handled inline (the corrections)
@@ -46,19 +46,19 @@ dnf -y install chrony firewalld policycoreutils-python-utils vim curl tar jq
 
 hostnamectl set-hostname web1
 cat >> /etc/hosts <<'EOF'
-192.168.1.10  vip.platform.lab
-192.168.1.11  edge1.platform.lab edge1
-192.168.1.12  edge2.platform.lab edge2
-192.168.1.21  web1.platform.lab  web1
-192.168.1.22  web2.platform.lab  web2
-192.168.1.31  data1.platform.lab data1
-192.168.1.41  obs1.platform.lab  obs1
+10.50.1.10  vip.platform.lab
+10.50.1.11  edge1.platform.lab edge1
+10.50.1.12  edge2.platform.lab edge2
+10.50.1.21  web1.platform.lab  web1
+10.50.1.22  web2.platform.lab  web2
+10.50.1.31  data1.platform.lab data1
+10.50.1.41  obs1.platform.lab  obs1
 EOF
 
 NIC=$(ip -br a | awk '$1!="lo"{print $1; exit}'); echo "NIC=$NIC"
 CON=$(nmcli -g NAME con show --active | head -1)
-nmcli con mod "$CON" ipv4.addresses 192.168.1.21/24 ipv4.gateway 192.168.1.254 \
-  ipv4.dns 192.168.1.254 ipv4.method manual
+nmcli con mod "$CON" ipv4.addresses 10.50.1.21/24 ipv4.gateway 10.50.1.254 \
+  ipv4.dns 10.50.1.254 ipv4.method manual
 systemctl restart NetworkManager
 nmcli con up "$CON"                      # reconnect on .21
 
@@ -66,7 +66,7 @@ systemctl enable --now chronyd firewalld
 setenforce 1; sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
 ```
 
-**Verify:** `hostname` → web1, `getenforce` → Enforcing, `ping -c1 192.168.1.10`.
+**Verify:** `hostname` → web1, `getenforce` → Enforcing, `ping -c1 10.50.1.10`.
 
 ---
 
@@ -100,7 +100,7 @@ id nginx        # uid=980(nginx) gid=980(nginx)
 
 ```bash
 # backend port, only from the edge subnet
-firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.0/24 port port=8080 protocol=tcp accept'
+firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.50.1.0/24 port port=8080 protocol=tcp accept'
 firewall-cmd --reload
 
 semanage port -a -t http_port_t -p tcp 8080     # let nginx bind 8080
@@ -143,7 +143,7 @@ server {
 
     add_header X-Backend "web1-blue" always;     # see which node served (LB demo)
 
-    set_real_ip_from 192.168.1.0/24;
+    set_real_ip_from 10.50.1.0/24;
     real_ip_header   X-Forwarded-For;
 
     location = /healthz { default_type text/plain; return 200 "web1 ok\n"; }
@@ -183,7 +183,7 @@ cp /var/www/wordpress/wp-config-sample.php /var/www/wordpress/wp-config.php
 sed -i "s/database_name_here/wordpress/"      /var/www/wordpress/wp-config.php
 sed -i "s/username_here/wp_user/"             /var/www/wordpress/wp-config.php
 sed -i "s/password_here/CHANGE_ME_strong_pw/" /var/www/wordpress/wp-config.php
-sed -i "s/localhost/192.168.1.31/"            /var/www/wordpress/wp-config.php
+sed -i "s/localhost/10.50.1.31/"            /var/www/wordpress/wp-config.php
 
 # --- auth salts: fetch ONCE; the SAME block must end up on web2 (needs php-cli) ---
 php -r '
@@ -231,9 +231,9 @@ curl -s -o /dev/null -w 'healthz: %{http_code}\n' http://127.0.0.1:8080/healthz 
 curl -s http://127.0.0.1:8080/index.php | grep -iE 'database|establishing'        # the DB-error page
 php -l /var/www/wordpress/wp-config.php                                            # no syntax errors
 
-# from an edge node:  curl -s -o /dev/null -w '%{http_code}\n' http://192.168.1.21:8080/healthz   # 200
+# from an edge node:  curl -s -o /dev/null -w '%{http_code}\n' http://10.50.1.21:8080/healthz   # 200
 # end-to-end via the VIP:
-curl -sk -o /dev/null -w 'via VIP: %{http_code}\n' --resolve app.platform.lab:443:192.168.1.10 'https://app.platform.lab/'
+curl -sk -o /dev/null -w 'via VIP: %{http_code}\n' --resolve app.platform.lab:443:10.50.1.10 'https://app.platform.lab/'
 ```
 
 **Expected at this stage:** `healthz` = **200**, and via the VIP a **500** whose body is
@@ -258,7 +258,7 @@ dnf -y install nfs-utils
 mkdir -p /var/www/wordpress/wp-content/uploads
 
 # NOTE: 'nofail' so a down/absent data1 never drops this node to emergency mode at boot
-echo '192.168.1.31:/export/wordpress/uploads  /var/www/wordpress/wp-content/uploads  nfs  defaults,_netdev,nofail  0 0' >> /etc/fstab
+echo '10.50.1.31:/export/wordpress/uploads  /var/www/wordpress/wp-content/uploads  nfs  defaults,_netdev,nofail  0 0' >> /etc/fstab
 systemctl daemon-reload          # REQUIRED after editing fstab, or systemd uses the old version
 
 # This only succeeds AFTER data1 exports the share. Until then, 'mount -a' returns
@@ -271,11 +271,11 @@ restorecon -Rv /var/www/wordpress/wp-content/uploads      # NFS needs httpd_use_
 
 ### 9b. Complete the WordPress install (WP-CLI — no browser/DNS needed)
 
-Once data1's MariaDB has the `wordpress` DB and `wp_user` granted from `192.168.1.%`:
+Once data1's MariaDB has the `wordpress` DB and `wp_user` granted from `10.50.1.%`:
 
 ```bash
 dnf -y install mariadb        # client, for the connectivity test
-mysql -h 192.168.1.31 -u wp_user -pCHANGE_ME_strong_pw wordpress -e 'SELECT 1;'   # -> 1
+mysql -h 10.50.1.31 -u wp_user -pCHANGE_ME_strong_pw wordpress -e 'SELECT 1;'   # -> 1
 
 # install WP-CLI and run the install non-interactively (avoids the browser + DNS entirely)
 cd /var/www/wordpress
@@ -293,12 +293,12 @@ wp post list --allow-root        # the default "Hello world!" post = install suc
 find /var/www/wordpress -path '*/wp-content/uploads' -prune -o -exec chown nginx:nginx {} +
 
 # verify the live site:
-curl -sk -o /dev/null -w 'via VIP: %{http_code}\n' --resolve app.platform.lab:443:192.168.1.10 'https://app.platform.lab/'   # 200
+curl -sk -o /dev/null -w 'via VIP: %{http_code}\n' --resolve app.platform.lab:443:10.50.1.10 'https://app.platform.lab/'   # 200
 ```
 
 **Browser access (optional).** The site name `app.platform.lab` must resolve to the VIP — the
 working `curl` above uses `--resolve` to fake it. To reach it from a browser, add
-`192.168.1.10  app.platform.lab` to your DNS (192.168.1.254) or the hosts file of the machine
+`10.50.1.10  app.platform.lab` to your DNS (10.50.1.254) or the hosts file of the machine
 you browse from. On Windows, if the hosts entry seems ignored, the browser's **Secure DNS /
 DNS-over-HTTPS** is bypassing it — disable it (Settings → Privacy → Secure DNS) and run
 `ipconfig /flushdns`; check with `ping app.platform.lab`. Self-signed certs trigger a browser
@@ -345,7 +345,7 @@ ls -Z /var/www/wordpress/wp-content                            # httpd_sys_rw_co
 | uploads fail on NFS with SELinux AVC | `httpd_use_nfs` off | `setsebool -P httpd_use_nfs 1` (step 3) |
 | logged-in users randomly logged out | salts differ between web1/web2 | identical salts on both (step 6) |
 | `chown: Operation not permitted` on `wp-content/uploads` | it's the NFS mount (`root_squash`); root can't chown it | harmless — files are already 980:980; skip it with `-path '*/wp-content/uploads' -prune` (9b) |
-| browser can't reach `app.platform.lab` | name doesn't resolve to the VIP | add `192.168.1.10 app.platform.lab` to DNS/hosts; on Windows disable browser Secure DNS + `ipconfig /flushdns` (9b) |
+| browser can't reach `app.platform.lab` | name doesn't resolve to the VIP | add `10.50.1.10 app.platform.lab` to DNS/hosts; on Windows disable browser Secure DNS + `ipconfig /flushdns` (9b) |
 | can't run the install wizard (no browser / DNS) | — | use WP-CLI `wp core install` instead (9b) |
 | WordPress Site Health: missing extension | extension not installed | `dnf search php-<name>` + install, restart php-fpm |
 
@@ -356,12 +356,12 @@ ls -Z /var/www/wordpress/wp-content                            # httpd_sys_rw_co
 web1 (blue) is a live backend — the edge VIP proxies to a real web server (currently the
 expected DB-error `500` until data1 is up). Next:
 
-- **data1 (192.168.1.31)** — MariaDB (the `wordpress` DB + `wp_user`@`192.168.1.%`), the NFS
+- **data1 (10.50.1.31)** — MariaDB (the `wordpress` DB + `wp_user`@`10.50.1.%`), the NFS
   export owned **980:980** (matching web1's pinned nginx), and restic backups. This clears the
   500 and lets you finish web1 steps 9a/9b.
-- **web2 (192.168.1.22, green)** — clone web1: same build, IP `.22`, `X-Backend "web2-green"`,
+- **web2 (10.50.1.22, green)** — clone web1: same build, IP `.22`, `X-Backend "web2-green"`,
   nginx pinned to UID **980**, and the **same `/var/www/wordpress/`** (identical salts/wp-config)
   rsync'd from web1. Then the edge load-balances blue/green (watch `X-Backend` alternate) and you
   can test backend failover (stop nginx on web1 → all traffic to web2).
-- **obs1 (192.168.1.41)** — Prometheus/Grafana scraping node/nginx/PHP-FPM/MariaDB exporters.
+- **obs1 (10.50.1.41)** — Prometheus/Grafana scraping node/nginx/PHP-FPM/MariaDB exporters.
 ```

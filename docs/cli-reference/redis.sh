@@ -33,7 +33,7 @@ systemctl enable --now redis
 
 # Firewall — Redis from the platform subnet only (6379 is redis_port_t under
 # SELinux by default — nothing to relabel unless you move the port)
-firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.0/24 port port=6379 protocol=tcp accept'
+firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.50.1.0/24 port port=6379 protocol=tcp accept'
 firewall-cmd --reload
 
 # --- Operating ---

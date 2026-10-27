@@ -16,7 +16,7 @@ if [ ! -f /etc/pki/nginx/app.platform.lab.crt ]; then
     -keyout /etc/pki/nginx/private/app.platform.lab.key \
     -out /etc/pki/nginx/app.platform.lab.crt \
     -days 825 -subj "/CN=app.platform.lab" \
-    -addext "subjectAltName=DNS:app.platform.lab,DNS:vip.platform.lab,IP:192.168.1.10"
+    -addext "subjectAltName=DNS:app.platform.lab,DNS:vip.platform.lab,IP:10.50.1.10"
 fi
 chmod 0600 /etc/pki/nginx/private/app.platform.lab.key
 

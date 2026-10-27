@@ -36,17 +36,18 @@ mysql --socket=/var/lib/mysql/mysql.sock -e "DROP DATABASE IF EXISTS test;"
 mysql --socket=/var/lib/mysql/mysql.sock -e "FLUSH PRIVILEGES;"
 
 # --- WordPress database + network-scoped user (web subnet only, not '%') ---
+# The role derives the host pattern from `subnet` (mariadb_wp_user_host, /24 only).
 mysql --socket=/var/lib/mysql/mysql.sock -e \
   "CREATE DATABASE IF NOT EXISTS wordpress CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql --socket=/var/lib/mysql/mysql.sock -e \
-  "CREATE USER IF NOT EXISTS 'wp_user'@'192.168.1.%' IDENTIFIED BY 'CHANGE_ME';"
+  "CREATE USER IF NOT EXISTS 'wp_user'@'10.50.1.%' IDENTIFIED BY 'CHANGE_ME';"
 mysql --socket=/var/lib/mysql/mysql.sock -e \
-  "GRANT ALL PRIVILEGES ON wordpress.* TO 'wp_user'@'192.168.1.%';"
+  "GRANT ALL PRIVILEGES ON wordpress.* TO 'wp_user'@'10.50.1.%';"
 mysql --socket=/var/lib/mysql/mysql.sock -e "FLUSH PRIVILEGES;"
 
 # --- Firewall: web subnet only (SELinux note: 3306 is mysqld_port_t by default,
 #     nothing to relabel unless you move MariaDB to a non-standard port) ---
-firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.0/24 port port=3306 protocol=tcp accept'
+firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.50.1.0/24 port port=3306 protocol=tcp accept'
 firewall-cmd --reload
 
 # --- Operating ---

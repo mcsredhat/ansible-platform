@@ -65,7 +65,7 @@ systemctl daemon-reload
 systemctl enable --now loki
 
 # Firewall — allow promtail agents across the whole platform subnet to push logs in
-firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=192.168.1.0/24 port port=3100 protocol=tcp accept'
+firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.50.1.0/24 port port=3100 protocol=tcp accept'
 firewall-cmd --reload
 
 # --- Operating ---

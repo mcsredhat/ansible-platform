@@ -57,11 +57,12 @@ domain {
   }
 }
 CF
+# role: the second secure_ip is mail_rspamd_secure_ip (= subnet)
 cat > /etc/rspamd/local.d/worker-controller.inc <<'CF'
 bind_socket = "*:11334";
 password = "CHANGE_ME";
 secure_ip = "127.0.0.1";
-secure_ip = "192.168.1.0/24";
+secure_ip = "10.50.1.0/24";
 CF
 chown -R root:_rspamd /etc/rspamd/local.d
 chmod 0640 /etc/rspamd/local.d/*.conf /etc/rspamd/local.d/*.inc
