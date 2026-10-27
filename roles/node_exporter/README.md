@@ -17,7 +17,7 @@ on every node, with the textfile collector enabled so other roles (e.g.
 | `node_exporter_version` | `1.8.2` | Pinned release |
 | `node_exporter_port` | `9100` | Listen port |
 | `node_exporter_textfile_dir` | `/var/lib/node_exporter/textfile_collector` | Custom-metric drop dir |
-| `node_exporter_scraper_ip` | `192.168.1.41` | obs1 (only allowed scraper) |
+| `node_exporter_scraper_ip` | obs1's `node_ip` (via `groups['obs']`; `127.0.0.1` if no obs group) | Only allowed scraper |
 
 ## Scope
 Runs on `all` hosts. Scraped by Prometheus on obs1.

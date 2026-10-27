@@ -25,9 +25,9 @@ edge_tls_key:  /etc/pki/nginx/private/your-real.key
 
 ## Verify (from a client, resolving the name to an edge node or the VIP)
 ```bash
-curl -sk -D - -o /dev/null --resolve app.platform.lab:443:192.168.1.11 \
+curl -sk -D - -o /dev/null --resolve app.platform.lab:443:10.50.1.11 \
   https://app.platform.lab/ | grep -iE 'HTTP/|x-backend'      # 200, X-Backend alternates
 # hammer it and watch blue/green:
-for i in $(seq 8); do curl -sk -o /dev/null -D - --resolve app.platform.lab:443:192.168.1.11 \
+for i in $(seq 8); do curl -sk -o /dev/null -D - --resolve app.platform.lab:443:10.50.1.11 \
   https://app.platform.lab/ | awk 'tolower($0) ~ /x-backend/'; done
 ```

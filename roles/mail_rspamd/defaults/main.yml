@@ -13,6 +13,8 @@ mail_dkim_key: "{{ mail_dkim_key_dir }}/{{ mail_domain }}.{{ mail_dkim_selector 
 
 # Rspamd controller web UI password (from vault); bind localhost only
 mail_rspamd_password: "{{ vault_rspamd_password | default('rspamd-change-me') }}"
+# Network allowed to read /metrics without the password (rspamd secure_ip)
+mail_rspamd_secure_ip: "{{ subnet }}"
 
 # spam thresholds
 mail_rspamd_reject_score: 15

@@ -9,4 +9,4 @@ redis_password: "{{ vault_redis_pw }}"
 redis_maxmemory: "256mb"
 redis_maxmemory_policy: "allkeys-lru"      # cache-oriented eviction
 redis_rename_dangerous: true               # disable FLUSHALL (FLUSHDB kept: WP object cache needs it)
-redis_allowed_subnet: "{{ subnet | default('192.168.1.0/24') }}"
+redis_allowed_subnet: "{{ subnet }}"

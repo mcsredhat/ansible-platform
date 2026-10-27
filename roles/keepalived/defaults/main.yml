@@ -1,12 +1,11 @@
 ---
 # keepalived role — floating VIP for the edge tier (00-architecture §4.6)
 # edge1 is MASTER (priority 150), edge2 BACKUP (100) via host_vars. Unicast VRRP.
-keepalived_vip: "192.168.1.10"
-keepalived_vip_cidr: "24"
+keepalived_vip: "{{ vip }}"
+keepalived_vip_cidr: "{{ subnet.split('/')[1] }}"
 keepalived_router_id: 51
 keepalived_auth_pass: "Pl4tf0rm"          # keepalived truncates to 8 chars; both edges match
 keepalived_state: "BACKUP"                # edge1 host_var overrides to MASTER
 keepalived_priority: 100                  # edge1 host_var overrides to 150
-keepalived_peers:                         # all edge IPs; the template excludes self
-  - "192.168.1.11"
-  - "192.168.1.12"
+# all edge IPs (node_ip of every edge host); the template excludes self
+keepalived_peers: "{{ groups['edge'] | default([]) | map('extract', hostvars, 'node_ip') | list }}"

@@ -4,7 +4,7 @@
 # a Prometheus success metric, and a vaulted repo key.
 
 # IMPORTANT: a local path is NOT 3-2-1. Override this to off-host storage —
-#   sftp:backup@192.168.1.5:/srv/restic   (control node / NAS over SSH)
+#   sftp:backup@control.platform.lab:/srv/restic   (control node / NAS over SSH)
 #   s3:http://minio.lab:9000/restic        (object storage)
 # The default below lets you validate the mechanics locally first.
 restic_repository: "/srv/restic-repo"

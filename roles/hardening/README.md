@@ -21,7 +21,7 @@ Preventive security controls (00-architecture §4.1), applied to every node.
   ```bash
   ansible-playbook hardening.yml --limit edge1 --check --diff
   ansible-playbook hardening.yml --limit edge1
-  ssh deploy@192.168.1.11 true     # confirm in a NEW session
+  ssh deploy@10.50.1.11 true     # confirm in a NEW session
   ansible-playbook hardening.yml   # then scale to all
   ```
 

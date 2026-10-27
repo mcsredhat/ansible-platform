@@ -18,7 +18,7 @@ repository key, and a Prometheus success metric. Pairs with `dr.yml` for restore
 The default `restic_repository` is a **local path** so you can validate mechanics
 immediately. That is **not** off-host. For real 3-2-1, override it to remote storage:
 ```yaml
-restic_repository: "sftp:backup@192.168.1.5:/srv/restic"   # control node / NAS
+restic_repository: "sftp:backup@control.platform.lab:/srv/restic"   # control node / NAS
 # or  s3:http://minio.lab:9000/restic
 ```
 (SFTP needs the deploy key authorised on the backup host for the `backup` user.)

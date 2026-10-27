@@ -44,7 +44,7 @@
 
 - name: Allow VRRP from the platform subnet
   ansible.posix.firewalld:
-    rich_rule: "rule family=ipv4 source address={{ subnet | default('192.168.1.0/24') }} protocol value=vrrp accept"
+    rich_rule: "rule family=ipv4 source address={{ subnet }} protocol value=vrrp accept"
     permanent: true
     immediate: "{{ (ka_firewalld.stdout | default('')) == 'active' }}"
     state: enabled

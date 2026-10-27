@@ -8,7 +8,7 @@ blackbox_exporter_port: 9115
 blackbox_exporter_config_dir: /etc/blackbox_exporter
 
 # The VIP + vhost to probe (the real user-facing entrypoint).
-blackbox_probe_vip: "192.168.1.10"
+blackbox_probe_vip: "{{ vip }}"
 blackbox_probe_host: "app.platform.lab"
 
 blackbox_exporter_download_url: >-

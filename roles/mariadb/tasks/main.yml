@@ -64,6 +64,13 @@
   when: not mariadb_in_container
   tags: [mariadb, db]
 
+- name: Assert the subnet is a /24 (wp_user host pattern is octet-based)
+  ansible.builtin.assert:
+    that: subnet.split('/')[1] == '24'
+    fail_msg: "mariadb_wp_user_host derives an a.b.c.% pattern; override it for non-/24 subnets"
+    quiet: true
+  tags: [mariadb, db]
+
 - name: Create the WordPress network user + grant
   community.mysql.mysql_user:
     name: "{{ mariadb_wp_user }}"

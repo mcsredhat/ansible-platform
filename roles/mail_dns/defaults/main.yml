@@ -7,7 +7,8 @@ mail_dns_packages:
   - bind-utils
 mail_domain: "{{ domain }}"
 mail_hostname: "mail.{{ mail_domain }}"
-mail_server_ip: "192.168.1.51"        # mail1
+mail_server_ip: "{{ node_ip }}"         # mail1 (this role runs on it)
+mail_dns_allow_query: "{{ subnet }}"    # BIND allow-query: who may resolve the zone
 
 # deliverability records
 mail_spf_record: "v=spf1 mx -all"     # only our MX may send; hard-fail others

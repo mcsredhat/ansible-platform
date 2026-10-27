@@ -4,4 +4,4 @@ bind_socket = "*:11334";
 password = "{{ mail_rspamd_password }}";
 # Allow the monitoring network to read /metrics without the password
 secure_ip = "127.0.0.1";
-secure_ip = "192.168.1.0/24";
+secure_ip = "{{ mail_rspamd_secure_ip }}";

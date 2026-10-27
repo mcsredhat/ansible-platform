@@ -2,7 +2,7 @@
 # grafana — dashboards on obs1 (Phase 5). Official RPM repo (the one exception
 # to binary+systemd: Grafana ships a proper YUM repo, so use it).
 grafana_port: 3000
-grafana_allowed_source: "192.168.1.0/24"
+grafana_allowed_source: "{{ subnet }}"
 
 grafana_prometheus_url: "http://127.0.0.1:9090"
 grafana_loki_url: "http://127.0.0.1:3100"

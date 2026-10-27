@@ -1,7 +1,7 @@
 # Role: keepalived
 
 The floating VIP that makes the edge tier HA (00-architecture §4.6). edge1 holds the
-VIP as MASTER; if edge1 (or its nginx) fails, edge2 takes `192.168.1.10` over within a
+VIP as MASTER; if edge1 (or its nginx) fails, edge2 takes `10.50.1.10` over within a
 couple of seconds, so `https://app.platform.lab` keeps answering.
 
 ## What it does
@@ -19,11 +19,11 @@ couple of seconds, so `https://app.platform.lab` keeps answering.
 ## Verify
 ```bash
 # the VIP should live on edge1:
-ansible edge1 -b -m shell -a "ip -4 addr show | grep 192.168.1.10"
+ansible edge1 -b -m shell -a "ip -4 addr show | grep 10.50.1.10"
 # reach the site through the VIP:
-curl -sk -D - -o /dev/null --resolve app.platform.lab:443:192.168.1.10 https://app.platform.lab/ | grep -iE 'HTTP/|x-backend'
+curl -sk -D - -o /dev/null --resolve app.platform.lab:443:10.50.1.10 https://app.platform.lab/ | grep -iE 'HTTP/|x-backend'
 # failover: stop nginx on edge1, VIP should jump to edge2:
 ansible edge1 -b -m service -a "name=nginx state=stopped"
-ansible edge2 -b -m shell -a "ip -4 addr show | grep 192.168.1.10"   # now here
+ansible edge2 -b -m shell -a "ip -4 addr show | grep 10.50.1.10"   # now here
 ansible edge1 -b -m service -a "name=nginx state=started"            # recover
 ```

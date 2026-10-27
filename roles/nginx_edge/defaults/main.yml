@@ -21,4 +21,4 @@ edge_tls_keydir: /etc/pki/nginx/private
 edge_tls_cert: /etc/pki/nginx/app.platform.lab.crt
 edge_tls_key: /etc/pki/nginx/private/app.platform.lab.key
 edge_tls_days: 825
-edge_vip: "192.168.1.10"
+edge_vip: "{{ vip }}"

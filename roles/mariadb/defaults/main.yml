@@ -18,8 +18,9 @@ mariadb_binlog_expire_days: 7
 # WordPress database + network-scoped user
 mariadb_wp_db: wordpress
 mariadb_wp_user: wp_user
-mariadb_wp_user_host: "192.168.1.%"
+# MySQL host pattern a.b.c.% derived from subnet (valid for a /24 only; asserted in tasks)
+mariadb_wp_user_host: "{{ (subnet.split('/')[0].split('.'))[:3] | join('.') }}.%"
 mariadb_wp_password: "{{ vault_mariadb_wp_pw }}"
 
 # firewall: which source subnet may reach 3306
-mariadb_allowed_subnet: "{{ subnet | default('192.168.1.0/24') }}"
+mariadb_allowed_subnet: "{{ subnet }}"

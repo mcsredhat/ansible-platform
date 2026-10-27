@@ -8,7 +8,7 @@ alertmanager_port: 9093
 alertmanager_config_dir: /etc/alertmanager
 alertmanager_data_dir: /var/lib/alertmanager
 
-alertmanager_allowed_source: "192.168.1.0/24"
+alertmanager_allowed_source: "{{ subnet }}"
 
 # Phase 5: alerts are visible in the UI only (no external notification).
 # Phase 6 will flip this on once mail1/Postfix exists and set

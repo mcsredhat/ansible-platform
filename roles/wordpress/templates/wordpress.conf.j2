@@ -7,7 +7,7 @@ server {
 
     add_header X-Backend "{{ backend_label }}" always;   # blue/green marker (host_var)
 
-    set_real_ip_from {{ subnet | default('192.168.1.0/24') }};
+    set_real_ip_from {{ subnet }};
     real_ip_header   X-Forwarded-For;
 
     location = /healthz { default_type text/plain; return 200 "{{ inventory_hostname }} ok\n"; }

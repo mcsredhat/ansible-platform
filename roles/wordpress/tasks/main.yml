@@ -157,7 +157,7 @@
 
 - name: Open the backend port to the platform subnet only
   ansible.posix.firewalld:
-    rich_rule: "rule family=ipv4 source address={{ subnet | default('192.168.1.0/24') }} port port={{ wp_backend_port }} protocol=tcp accept"
+    rich_rule: "rule family=ipv4 source address={{ subnet }} port port={{ wp_backend_port }} protocol=tcp accept"
     permanent: true
     immediate: true
     state: enabled

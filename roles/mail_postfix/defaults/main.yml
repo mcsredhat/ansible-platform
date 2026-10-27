@@ -20,7 +20,7 @@ mail_vmail_gid: 5000
 mail_vmail_home: /var/mail/vhosts
 
 # Networks allowed to relay (the lab subnet); everything else must authenticate
-mail_mynetworks: "127.0.0.0/8 [::1]/128 192.168.1.0/24"
+mail_mynetworks: "127.0.0.0/8 [::1]/128 {{ subnet }}"
 
 # TLS (self-signed for the lab; real certs come with the public domain later)
 mail_tls_cert: /etc/pki/tls/certs/mail.crt

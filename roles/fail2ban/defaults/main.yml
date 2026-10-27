@@ -8,7 +8,7 @@ fail2ban_banaction: "firewallcmd-rich-rules"     # firewalld backend on RHEL 9
 
 # Ignore loopback + the management subnet so a fat-fingered login can't lock YOU
 # (or Ansible) out. In production, narrow this to just the jump/management hosts.
-fail2ban_ignoreip: "127.0.0.1/8 ::1 {{ subnet | default('192.168.1.0/24') }}"
+fail2ban_ignoreip: "127.0.0.1/8 ::1 {{ subnet }}"
 
 # Default jail set (every node). Tier group_vars extend this (nginx on web/edge,
 # postfix/dovecot on mail). sshd reads journald via the systemd backend.
