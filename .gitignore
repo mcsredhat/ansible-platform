@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 .molecule/
 *.tar.gz
+CLAUDE.local.md
