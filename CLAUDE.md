@@ -11,7 +11,7 @@ One Ansible monorepo that provisions two stacks on **RHEL 9 with SELinux enforci
 - Never run `ansible-playbook` without `--check` (or `--syntax-check`) unless I explicitly ask; show me the command first.
 - FQCN only (`ansible.builtin.*`, `ansible.posix.*`, `community.*`), every task idempotent.
 - Known issue: `keepalived_auth_pass` in `roles/keepalived/defaults/main.yml` is a plaintext secret; it must move to `vault_*` in the vault. Never add new plaintext secrets.
-- The lab subnet is moving from `192.168.1.0/24` to `10.50.1.0/24` (refactor pending). Don't "fix" either value unless the task is that refactor.
+- The current lab subnet is `10.50.1.0/24` . all role IPs derive from subnet,vip ,and node_ip in the inventory : never hardcode an IP in a role.
 
 ## Commands
 
