@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.vault-pass)",
+      "Read(**/vault.yml)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Bash(ansible-vault view *)",
+      "Bash(ansible-vault decrypt *)",
+      "Bash(ansible-vault edit *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(ansible-playbook *)"
+    ],
+    "allow": [
+      "Bash(ansible-lint *)",
+      "Bash(yamllint *)"
+    ]
+  }
+}
