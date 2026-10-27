@@ -1,11 +1,11 @@
 ---
 # Platform-wide invariants — defined ONCE, referenced everywhere (00-arch §10)
 domain: platform.lab
-subnet: "192.168.1.0/24"
+subnet: "10.50.1.0/24"
 base_prefix: 24
-gateway: "192.168.1.254"
-dns_server: "192.168.1.254"
-vip: "192.168.1.10"
+gateway: "10.50.1.254"
+dns_server: "10.50.1.254"
+vip: "10.50.1.10"
 
 webdata_uid: 1980
 webdata_gid: 1980
@@ -13,15 +13,15 @@ tuned_profile: throughput-performance
 
 # Rendered into /etc/hosts on every node by the base role
 platform_hosts:
-  - { ip: "192.168.1.5", names: "control.platform.lab control" }
-  - { ip: "192.168.1.10", names: "vip.platform.lab app.platform.lab" }
-  - { ip: "192.168.1.11", names: "edge1.platform.lab edge1" }
-  - { ip: "192.168.1.12", names: "edge2.platform.lab edge2" }
-  - { ip: "192.168.1.21", names: "web1.platform.lab web1" }
-  - { ip: "192.168.1.22", names: "web2.platform.lab web2" }
-  - { ip: "192.168.1.31", names: "data1.platform.lab data1" }
-  - { ip: "192.168.1.41", names: "obs1.platform.lab obs1" }
-  - { ip: "192.168.1.51", names: "mail1.platform.lab mail1" }
+  - { ip: "10.50.1.5", names: "control.platform.lab control" }
+  - { ip: "10.50.1.10", names: "vip.platform.lab app.platform.lab" }
+  - { ip: "10.50.1.11", names: "edge1.platform.lab edge1" }
+  - { ip: "10.50.1.12", names: "edge2.platform.lab edge2" }
+  - { ip: "10.50.1.21", names: "web1.platform.lab web1" }
+  - { ip: "10.50.1.22", names: "web2.platform.lab web2" }
+  - { ip: "10.50.1.31", names: "data1.platform.lab data1" }
+  - { ip: "10.50.1.41", names: "obs1.platform.lab obs1" }
+  - { ip: "10.50.1.51", names: "mail1.platform.lab mail1" }
 
 # Connection user — uncomment AFTER bootstrap.yml has run successfully:
 ansible_user: deploy
