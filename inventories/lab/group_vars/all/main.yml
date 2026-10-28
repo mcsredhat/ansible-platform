@@ -7,6 +7,10 @@ gateway: "10.50.1.254"
 dns_server: "10.50.1.254"
 vip: "10.50.1.10"
 
+# Lab L2 is VXLAN over Tailscale (kvm1<->kvm2): WireGuard + VXLAN overhead leave
+# a 1230-byte path MTU. Lab-only: other inventories leave base_mtu unset (OS default).
+base_mtu: 1230
+
 webdata_uid: 1980
 webdata_gid: 1980
 tuned_profile: throughput-performance

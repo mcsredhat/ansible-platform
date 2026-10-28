@@ -8,6 +8,7 @@ nmcli, SELinux enforcing, firewalld.
 | Variable | Default | Notes |
 |---|---|---|
 | `base_manage_network` | `true` | `false` skips nmcli (leave NIC pre-set) |
+| `base_mtu` | unset | NIC MTU via nmcli; unset = OS default. Lab sets `1230` (VXLAN over Tailscale) |
 | `base_selinux_state` | `enforcing` | |
 | `base_timezone` | `Europe/Paris` | |
 | `node_ip` | — | per-host, in `host_vars` |

@@ -2,6 +2,8 @@
 # base role defaults — override in group_vars / host_vars
 base_manage_network: true       # false = leave NIC pre-set, skip nmcli entirely
 base_nmcli_conn: ""             # blank = use the detected default interface
+# base_mtu: 1500                # UNSET by default -> MTU omitted, OS/NM default ("auto").
+#                               # Set per inventory when the underlay needs it (lab: 1230).
 base_timezone: "Europe/Paris"
 base_enable_epel: true
 base_selinux_state: enforcing

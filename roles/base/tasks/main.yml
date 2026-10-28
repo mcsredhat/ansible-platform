@@ -73,6 +73,7 @@
     gw4: "{{ gateway }}"
     dns4: "{{ [dns_server] }}"
     method4: manual
+    mtu: "{{ base_mtu | default(omit) }}"
     state: present
   when:
     - base_manage_network | bool

@@ -47,8 +47,10 @@ nmcli connection modify "$IFACE" \
   ipv4.addresses "$NODE_IP" \
   ipv4.gateway 10.50.1.254 \
   ipv4.dns 10.50.1.254 \
-  ipv4.method manual
+  ipv4.method manual \
+  802-3-ethernet.mtu 1230    # lab only (VXLAN over Tailscale); omit elsewhere = "auto"
 nmcli connection up "$IFACE"     # applies immediately — may briefly drop the connection
+ip link show "$IFACE" | grep -o 'mtu [0-9]*'   # expect: mtu 1230
 
 # 6. SELinux enforcing (targeted policy)
 setenforce 1
