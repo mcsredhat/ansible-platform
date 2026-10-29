@@ -23,7 +23,7 @@
 
     - name: Restore the latest snapshot to staging
       ansible.builtin.command: >
-        restic -r {{ restic_repository }} restore latest --target {{ restore_staging }}
+        restic -r {{ restic_repository }} restore latest --tag platform --target {{ restore_staging }}
       environment:
         RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
       changed_when: true

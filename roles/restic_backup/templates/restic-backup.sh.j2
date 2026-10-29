@@ -1,45 +1,79 @@
 #!/usr/bin/env bash
 # {{ ansible_managed }}
+# Run via `systemctl start restic-backup.service`: the unit supplies
+# RESTIC_REPOSITORY / RESTIC_PASSWORD_FILE from {{ restic_env_file }} and the hardening.
 set -uo pipefail
-export RESTIC_REPOSITORY="{{ restic_repository }}"
-export RESTIC_PASSWORD_FILE="{{ restic_password_file }}"
+: "${RESTIC_REPOSITORY:?run via systemctl start restic-backup.service}"
+: "${RESTIC_PASSWORD_FILE:?run via systemctl start restic-backup.service}"
 
 PROM="{{ restic_textfile_dir }}/restic_backup.prom"
+DUMP="{{ restic_db_dump_dir }}/{{ restic_db_name }}.sql.gz"
 START=$(date +%s)
-rc=0
+platform_rc=0
+etc_rc=0
+prune_rc=0
 
-# 1. Dump the database (root via unix socket — no password needed)
-mkdir -p "{{ restic_db_dump_dir }}"
-if ! mysqldump --single-transaction --routines --triggers "{{ restic_db_name }}" \
-      | gzip > "{{ restic_db_dump_dir }}/{{ restic_db_name }}.sql.gz"; then
+# 1. tag platform: dump the database (root via unix socket), then dump + uploads.
+#    Write to .tmp first so a failed dump never replaces the last good one.
+if mysqldump --single-transaction --routines --triggers "{{ restic_db_name }}" | gzip > "${DUMP}.tmp"; then
+  mv "${DUMP}.tmp" "${DUMP}"
+else
   echo "ERROR: mysqldump failed" >&2
-  rc=1
+  rm -f "${DUMP}.tmp"
+  platform_rc=1
+fi
+if [ "$platform_rc" -eq 0 ]; then
+  restic backup {{ restic_paths | join(' ') }} --tag platform || platform_rc=1
+fi
+if [ "$platform_rc" -eq 0 ]; then
+  restic forget --tag platform --group-by host,tags {{ restic_retention }} || platform_rc=1
 fi
 
-# 2. Back up the dump + the uploads tree
-if [ "$rc" -eq 0 ]; then
-  restic backup {{ restic_paths | join(' ') }} --tag platform || rc=1
+# 2. tag etc: independent of the database, so a dump failure never skips it
+restic backup {{ restic_etc_paths | join(' ') }} --tag etc || etc_rc=1
+if [ "$etc_rc" -eq 0 ]; then
+  restic forget --tag etc --group-by host,tags {{ restic_etc_retention }} || etc_rc=1
 fi
 
-# 3. Apply retention
-if [ "$rc" -eq 0 ]; then
-  restic forget {{ restic_retention }} --prune || rc=1
+# 3. One prune for both tags (prune takes an exclusive repo lock)
+if [ "$platform_rc" -eq 0 ] || [ "$etc_rc" -eq 0 ]; then
+  restic prune || prune_rc=1
 fi
 
 END=$(date +%s)
 
+ok() { [ "$1" -eq 0 ] && echo 1 || echo 0; }
+# On failure carry the previous last-success time forward, so ResticBackupStale
+# measures time since the last good run. No previous value -> omit the line.
+last_ok() {
+  local ts
+  if [ "$2" -eq 0 ]; then
+    ts=$END
+  else
+    ts=$(sed -n "s/^restic_backup_last_success_timestamp_seconds{tag=\"$1\"} //p" "$PROM" 2>/dev/null)
+  fi
+  if [ -n "$ts" ]; then echo "restic_backup_last_success_timestamp_seconds{tag=\"$1\"} $ts"; fi
+}
+
 # 4. Emit Prometheus metrics atomically for the node_exporter textfile collector
 cat > "${PROM}.tmp" <<METRICS
-# HELP restic_backup_success Whether the last restic backup succeeded (1) or failed (0)
+# HELP restic_backup_success Whether the last restic backup of a tag succeeded (1) or failed (0)
 # TYPE restic_backup_success gauge
-restic_backup_success $([ "$rc" -eq 0 ] && echo 1 || echo 0)
-# HELP restic_backup_duration_seconds Duration of the last restic backup run
+restic_backup_success{tag="platform"} $(ok "$platform_rc")
+restic_backup_success{tag="etc"} $(ok "$etc_rc")
+# HELP restic_backup_duration_seconds Duration of the last restic backup run (all tags)
 # TYPE restic_backup_duration_seconds gauge
 restic_backup_duration_seconds $((END - START))
-# HELP restic_backup_timestamp_seconds Completion time of the last restic backup
+# HELP restic_backup_timestamp_seconds Completion time of the last restic backup run
 # TYPE restic_backup_timestamp_seconds gauge
 restic_backup_timestamp_seconds ${END}
+# HELP restic_backup_last_success_timestamp_seconds Completion time of the last successful backup of a tag
+# TYPE restic_backup_last_success_timestamp_seconds gauge
+$(last_ok platform "$platform_rc")
+$(last_ok etc "$etc_rc")
 METRICS
+# UMask=0077 would leave this 0600; node_exporter runs as its own user
+chmod 0644 "${PROM}.tmp"
 mv "${PROM}.tmp" "${PROM}"
 
-exit "$rc"
+exit $(( platform_rc | etc_rc | prune_rc ))

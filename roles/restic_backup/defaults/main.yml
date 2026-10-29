@@ -11,13 +11,23 @@ restic_repository: "/srv/restic-repo"
 
 restic_password: "{{ vault_restic_pw }}"
 restic_password_file: /etc/restic/repo.pass
+# systemd EnvironmentFile= for restic-backup.service: RESTIC_REPOSITORY and
+# RESTIC_PASSWORD_FILE only. The password itself stays in restic_password_file.
+restic_env_file: /etc/restic/env
+# Local path -> PrivateNetwork + ReadWritePaths; sftp:/s3:/rest: -> AF_INET(6).
+restic_repo_is_local: "{{ restic_repository is match('/') }}"
 
 restic_db_name: wordpress
 restic_db_dump_dir: /var/backups/wordpress
+# tag "platform": DB dump + uploads (what dr.yml restores)
 restic_paths:
   - /var/backups/wordpress
   - /srv/wordpress/uploads
+# tag "etc": host configuration, retained on its own schedule
+restic_etc_paths:
+  - /etc
 
-restic_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 6"
+restic_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 6"   # tag platform
+restic_etc_retention: "--keep-daily 7 --keep-weekly 4"                # tag etc
 restic_oncalendar: "*-*-* 02:30:00"          # nightly 02:30 + jitter
 restic_textfile_dir: /var/lib/node_exporter/textfile_collector

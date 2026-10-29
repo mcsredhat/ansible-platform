@@ -1,12 +1,56 @@
 # {{ ansible_managed }}
 [Unit]
-Description=Platform restic backup (DB dump + uploads)
+Description=Platform restic backup (tags: platform, etc)
+{% if restic_repo_is_local | bool %}
+After=mariadb.service
+{% else %}
 After=network-online.target mariadb.service
 Wants=network-online.target
+{% endif %}
 
 [Service]
 Type=oneshot
+EnvironmentFile={{ restic_env_file }}
+# CacheDirectory= creates /var/cache/restic; restic reads RESTIC_CACHE_DIR, not $CACHE_DIRECTORY
+Environment=RESTIC_CACHE_DIR=%C/restic
 ExecStart=/usr/local/bin/restic-backup.sh
+SyslogIdentifier=restic-backup
+UMask=0077
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7
+CacheDirectory=restic
+CacheDirectoryMode=0700
+
+# Hardening. Exceptions: repo + dump dir + textfile dir writable, CAP_DAC_READ_SEARCH
+# to read /etc/shadow and uploads, AF_UNIX for the MariaDB socket.
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+ProtectSystem=strict
+ReadWritePaths={{ ([restic_db_dump_dir, restic_textfile_dir] + ([restic_repository] if restic_repo_is_local | bool else [])) | join(' ') }}
+ProtectHome=read-only
+PrivateTmp=true
+PrivateDevices=true
+{% if restic_repo_is_local | bool %}
+PrivateNetwork=true
+IPAddressDeny=any
+RestrictAddressFamilies=AF_UNIX
+{% else %}
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+{% endif %}
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
