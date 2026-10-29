@@ -34,33 +34,50 @@
   no_log: true
   tags: [restic, config]
 
-- name: Ensure dump dir + textfile-collector dir exist
+- name: Deploy the restic environment file (RESTIC_* only, read by the unit)
+  ansible.builtin.template:
+    src: restic.env.j2
+    dest: "{{ restic_env_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  tags: [restic, config]
+
+- name: Ensure dump dir (0700, DB dumps) + textfile-collector dir (0755, node_exporter reads it) exist
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
     owner: root
     group: root
-    mode: "0755"
+    mode: "{{ item.mode }}"
   loop:
-    - "{{ restic_db_dump_dir }}"
-    - "{{ restic_textfile_dir }}"
+    - { path: "{{ restic_db_dump_dir }}", mode: "0700" }
+    - { path: "{{ restic_textfile_dir }}", mode: "0755" }
+  loop_control:
+    label: "{{ item.path }}"
   tags: [restic, config]
 
 # --- idempotent repo init ------------------------------------------------
+# check_mode: false: the probe only reads. Without it --check skips the command,
+# restic_probe has no .rc, and the init `when:` below errors out.
 - name: Probe whether the repository is initialised
-  ansible.builtin.command: "restic -r {{ restic_repository }} snapshots"
+  ansible.builtin.command: "restic -r {{ restic_repository }} cat config"
   environment:
     RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
   register: restic_probe
+  check_mode: false
   failed_when: false
   changed_when: false
   tags: [restic, repo]
 
+# `restic init` refuses an existing repo, so a false-negative probe (wrong
+# password, unreachable remote) fails here instead of clobbering anything.
 - name: Initialise the restic repository
   ansible.builtin.command: "restic -r {{ restic_repository }} init"
   environment:
     RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
   when: restic_probe.rc != 0
+  changed_when: true
   tags: [restic, repo]
 
 # --- backup script + schedule --------------------------------------------
