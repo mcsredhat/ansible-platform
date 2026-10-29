@@ -12,11 +12,56 @@
           - scr.stat.exists
           - scr.stat.mode == '0750'
 
+    - name: env file is root-only
+      ansible.builtin.stat:
+        path: /etc/restic/env
+      register: envf
+    - ansible.builtin.assert:
+        that:
+          - envf.stat.exists
+          - envf.stat.mode == '0600'
+          - envf.stat.pw_name == 'root'
+
+    - name: read env file
+      ansible.builtin.slurp:
+        src: /etc/restic/env
+      register: env_raw
+    - name: env file holds RESTIC_REPOSITORY + RESTIC_PASSWORD_FILE only (no password)
+      ansible.builtin.assert:
+        that:
+          - env_lines | length == 2
+          - env_lines | reject('match', '^RESTIC_(REPOSITORY|PASSWORD_FILE)=') | list | length == 0
+          - "'RESTIC_REPOSITORY=/srv/restic-repo' in env_lines"
+      vars:
+        env_lines: "{{ (env_raw.content | b64decode).splitlines() | reject('match', '^(#|$)') | list }}"
+
     - name: repo initialised (config object exists)
       ansible.builtin.command: restic -r /srv/restic-repo cat config
       environment:
         RESTIC_PASSWORD_FILE: /etc/restic/repo.pass
       changed_when: false
+
+    # The exposure score is measured on data1 only (systemd-analyze security).
+    - name: read service unit
+      ansible.builtin.slurp:
+        src: /etc/systemd/system/restic-backup.service
+      register: unit_raw
+    - name: unit carries the adopted settings and the hardening baseline
+      ansible.builtin.assert:
+        that: item in (unit_raw.content | b64decode).splitlines()
+      loop:
+        - After=mariadb.service
+        - EnvironmentFile=/etc/restic/env
+        - SyslogIdentifier=restic-backup
+        - CacheDirectory=restic
+        - ProtectSystem=strict
+        - ProtectHome=read-only
+        - PrivateTmp=true
+        - NoNewPrivileges=true
+        - ReadWritePaths=/var/backups/wordpress /var/lib/node_exporter/textfile_collector /srv/restic-repo
+    - name: ProtectHome is never yes
+      ansible.builtin.assert:
+        that: (unit_raw.content | b64decode) is not search('(?m)^ProtectHome=(yes|true)$')
 
     - name: timer unit installed
       ansible.builtin.command: systemctl cat restic-backup.timer
