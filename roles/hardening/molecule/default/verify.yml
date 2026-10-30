@@ -11,6 +11,16 @@
       ansible.builtin.command: grep -q "deny = 5" /etc/security/faillock.conf
       changed_when: false
 
+    - name: faillock feature active in authselect
+      ansible.builtin.command: authselect current
+      register: hardening_verify_authselect
+      changed_when: false
+      failed_when: "'with-faillock' not in hardening_verify_authselect.stdout"
+
+    - name: pam_faillock loaded by the PAM stack
+      ansible.builtin.command: grep -q pam_faillock.so /etc/pam.d/system-auth
+      changed_when: false
+
     - name: sudo logging drop-in present
       ansible.builtin.command: test -f /etc/sudoers.d/10-logging
       changed_when: false

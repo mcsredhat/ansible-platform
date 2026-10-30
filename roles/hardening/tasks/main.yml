@@ -31,16 +31,39 @@
   when: hardening_faillock | bool
   tags: [hardening, pam]
 
+- name: Ensure authselect and the PAM modules its profile loads
+  ansible.builtin.dnf:
+    name: [authselect, sssd-client, libpwquality]
+    state: present
+  when: hardening_faillock | bool
+  tags: [hardening, pam, packages]
+
 - name: Get current authselect profile
   ansible.builtin.command: authselect current
   register: hardening_authselect
   changed_when: false
-  failed_when: false
+  check_mode: false
+  failed_when: hardening_authselect.rc not in [0, 2]
   when: hardening_faillock | bool
   tags: [hardening, pam]
 
+# removes: makes `command` report changed under --check instead of skipped.
+- name: Select authselect profile with faillock (node has no profile)
+  ansible.builtin.command:
+    cmd: >-
+      authselect select {{ hardening_authselect_profile }} with-faillock --force
+      --backup=pre-hardening-{{ ansible_facts['date_time']['iso8601_basic_short'] }}
+    removes: /usr/bin/authselect
+  when:
+    - hardening_faillock | bool
+    - hardening_authselect.rc | default(1) == 2
+  changed_when: true
+  tags: [hardening, pam]
+
 - name: Enable faillock feature via authselect
-  ansible.builtin.command: authselect enable-feature with-faillock
+  ansible.builtin.command:
+    cmd: authselect enable-feature with-faillock
+    removes: /usr/bin/authselect
   when:
     - hardening_faillock | bool
     - hardening_authselect.rc | default(1) == 0

@@ -20,6 +20,8 @@ hardening_faillock: true
 hardening_faillock_deny: 5
 hardening_faillock_unlock_time: 900
 hardening_faillock_fail_interval: 900
+# Selected only on a node with no authselect profile; an existing profile is kept.
+hardening_authselect_profile: sssd
 
 # --- password quality (pam_pwquality) ---
 hardening_pwquality: true
