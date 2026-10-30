@@ -6,3 +6,18 @@
     - name: limits drop-in present
       ansible.builtin.command: grep -q "nofile" /etc/security/limits.d/90-tuning.conf
       changed_when: false
+
+    - name: Load role defaults
+      ansible.builtin.include_vars:
+        file: ../../defaults/main.yml
+        name: tuning_defaults
+
+    - name: Sysctl defaults leave tuned and kernel values alone, range clears listeners
+      vars:
+        settings: "{{ tuning_defaults.tuning_sysctl_settings }}"
+      ansible.builtin.assert:
+        that:
+          - settings | dict2items | selectattr('key', 'match', '^vm[.]') | list | length == 0
+          - "'fs.file-max' not in settings"
+          - "'net.core.somaxconn' not in settings"
+          - (settings['net.ipv4.ip_local_port_range'] | split | first | int) > 11334

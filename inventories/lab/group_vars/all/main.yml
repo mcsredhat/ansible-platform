@@ -13,7 +13,9 @@ base_mtu: 1230
 
 webdata_uid: 1980
 webdata_gid: 1980
-tuned_profile: throughput-performance
+# Lab nodes are KVM guests. virtual-guest includes throughput-performance and is
+# already active. The role's fallback stays throughput-performance for bare metal.
+tuned_profile: virtual-guest
 
 # Rendered into /etc/hosts on every node by the base role
 platform_hosts:
