@@ -27,9 +27,14 @@ deny = 5
 unlock_time = 900
 fail_interval = 900
 FAILLOCK
-# Only enable the feature if it isn't already active (idempotent):
+# Only touch authselect when needed (idempotent). rc=2 = no profile yet (cloud images).
+# Roll back: list /var/lib/authselect/backups/, then authselect backup-restore <newest>
+dnf install -y authselect sssd-client libpwquality
 CURRENT=$(authselect current 2>/dev/null)
-if [ $? -eq 0 ] && ! echo "$CURRENT" | grep -q with-faillock; then
+RC=$?
+if [ "$RC" -eq 2 ]; then
+  authselect select sssd with-faillock --force --backup="pre-hardening-$(date +%Y%m%dT%H%M%S)"
+elif [ "$RC" -eq 0 ] && ! echo "$CURRENT" | grep -q with-faillock; then
   authselect enable-feature with-faillock
 fi
 faillock                                     # show failed attempts per user
