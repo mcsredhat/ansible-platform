@@ -12,7 +12,7 @@ PermitRootLogin no
 PasswordAuthentication no
 PubkeyAuthentication yes
 X11Forwarding no
-MaxAuthTries 3
+MaxAuthTries 4
 ClientAliveInterval 300
 ClientAliveCountMax 2
 SSHD
@@ -67,9 +67,21 @@ visudo -cf /etc/sudoers.d/10-logging     # validates syntax; sudo refuses to run
 # 6. Kernel sysctl hardening
 cat > /etc/sysctl.d/90-hardening.conf <<'SYSCTL'
 net.ipv4.conf.all.rp_filter = 1
-net.ipv4.conf.all.accept_redirects = 0
-net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.rp_filter = 1
 net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv6.conf.all.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+net.ipv4.conf.all.accept_source_route = 0
+net.ipv4.conf.default.accept_source_route = 0
+net.ipv4.conf.all.log_martians = 1
+net.ipv4.icmp_echo_ignore_broadcasts = 1
+net.ipv4.icmp_ignore_bogus_error_responses = 1
 kernel.randomize_va_space = 2
+kernel.kptr_restrict = 2
+kernel.dmesg_restrict = 1
+fs.suid_dumpable = 0
 SYSCTL
 sysctl --system
