@@ -42,19 +42,8 @@
   when: audit_aide | bool
   tags: [audit, aide]
 
-- name: Initialize AIDE database (first run only)
-  ansible.builtin.command: aide --init
-  args:
-    creates: /var/lib/aide/aide.db.gz
-  when: audit_aide | bool and audit_aide_init | bool and not audit_in_container
-  tags: [audit, aide]
-
-- name: Activate the AIDE baseline
-  ansible.builtin.command: mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
-  args:
-    removes: /var/lib/aide/aide.db.new.gz
-  when: audit_aide | bool and audit_aide_init | bool and not audit_in_container
-  tags: [audit, aide]
+# The baseline is NOT built here: tasks/aide_baseline.yml does it from
+# aide_baseline.yml, the last play of site.yml, after every other role ran.
 
 - name: Deploy AIDE check service + timer
   ansible.builtin.template:

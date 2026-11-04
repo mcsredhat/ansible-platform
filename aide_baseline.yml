@@ -1,0 +1,13 @@
+---
+# AIDE baseline — LAST play of site.yml, so the baseline captures the finished node.
+# Re-baseline after an intentional change:
+#   ansible-playbook aide_baseline.yml --limit <host> -e audit_aide_rebaseline=true
+# Uses tasks: + import_role because roles: cannot take tasks_from.
+- name: Build the AIDE baseline on all nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: Build or refresh the AIDE baseline
+      ansible.builtin.import_role:
+        name: audit
+        tasks_from: aide_baseline

@@ -8,6 +8,7 @@ audit_immutable: false        # true appends '-e 2' (CIS); requires REBOOT to ch
 # --- AIDE file integrity ---
 audit_aide: true
 audit_aide_init: true         # build the baseline DB on first run (slow; off in CI)
+audit_aide_rebaseline: false  # true rebuilds the baseline after an intentional change (aide_baseline.yml -e audit_aide_rebaseline=true)
 audit_aide_check_oncalendar: "*-*-* 05:00:00"
 audit_aide_check_randomized_delay: "30min"  # RandomizedDelaySec: spread checks so nodes don't all run at once after boot
 

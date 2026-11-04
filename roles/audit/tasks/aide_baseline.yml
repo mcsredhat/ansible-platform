@@ -1,0 +1,35 @@
+---
+# audit — AIDE baseline (entry point for aide_baseline.yml, the LAST play of site.yml).
+# Runs after every role has changed the system, so the baseline matches the
+# finished node. Re-baseline after an intentional change:
+#   ansible-playbook aide_baseline.yml --limit <host> -e audit_aide_rebaseline=true
+
+# tasks_from skips main.yml, so detect the container here too.
+- name: Detect container runtime
+  ansible.builtin.set_fact:
+    audit_in_container: "{{ ansible_facts['virtualization_type'] | default('') in
+      ['docker', 'podman', 'container', 'lxc', 'containerd', 'oci'] }}"
+  tags: always
+
+- name: Check for an active AIDE baseline
+  ansible.builtin.stat:
+    path: /var/lib/aide/aide.db.gz
+  register: audit_aide_db
+  when: audit_aide | bool and audit_aide_init | bool and not audit_in_container
+  tags: [audit, aide]
+
+# --init (not --update): --update exits non-zero whenever it finds changes.
+- name: Build the AIDE baseline (first run, or on audit_aide_rebaseline)
+  ansible.builtin.command: aide --init
+  changed_when: true
+  when:
+    - audit_aide | bool and audit_aide_init | bool and not audit_in_container
+    - not (audit_aide_db.stat.exists | default(false)) or audit_aide_rebaseline | bool
+  tags: [audit, aide]
+
+- name: Activate the AIDE baseline
+  ansible.builtin.command: mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+  args:
+    removes: /var/lib/aide/aide.db.new.gz
+  when: audit_aide | bool and audit_aide_init | bool and not audit_in_container
+  tags: [audit, aide]

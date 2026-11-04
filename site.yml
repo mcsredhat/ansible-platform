@@ -90,3 +90,9 @@
   ansible.builtin.import_playbook: mysqld_exporter.yml
 - name: Import promtail (fleet)
   ansible.builtin.import_playbook: promtail.yml
+
+# ---------------------------------------------------------------------------
+# AIDE baseline — LAST, after every role above has changed the system
+# ---------------------------------------------------------------------------
+- name: Import AIDE baseline
+  ansible.builtin.import_playbook: aide_baseline.yml
