@@ -26,13 +26,18 @@ case "$RC" in
     0|2) SCAN_OK=1 ;;
     *)   SCAN_OK=0; echo "ERROR: oscap failed (rc=$RC); compliance metric not updated" >&2 ;;
 esac
+# A "good" rc without results is still a failed scan.
+if [ "$SCAN_OK" -eq 1 ] && [ ! -s "$RESULTS" ]; then
+    SCAN_OK=0
+    echo "ERROR: oscap rc=$RC but no results XML" >&2
+fi
 
 {% if audit_openscap_metrics %}
 # --- Emit a Prometheus compliance metric from the XML results ---
 # Only from a good scan: on error the old metric stays and its timestamp goes stale.
 TEXTFILE_DIR="{{ audit_openscap_textfile_dir }}"
 PROM="${TEXTFILE_DIR}/compliance.prom"
-if [ "$SCAN_OK" -eq 1 ] && [ -d "$TEXTFILE_DIR" ] && [ -s "$RESULTS" ]; then
+if [ "$SCAN_OK" -eq 1 ] && [ -d "$TEXTFILE_DIR" ]; then
     # Count rule-results by outcome from the ARF/XCCDF results XML.
     # grep -c prints 0 AND exits 1 on no match: '|| true' keeps the single 0.
     PASS=$(grep -c '<result>pass</result>' "$RESULTS" 2>/dev/null || true)
