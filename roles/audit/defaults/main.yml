@@ -9,6 +9,7 @@ audit_immutable: false        # true appends '-e 2' (CIS); requires REBOOT to ch
 audit_aide: true
 audit_aide_init: true         # build the baseline DB on first run (slow; off in CI)
 audit_aide_check_oncalendar: "*-*-* 05:00:00"
+audit_aide_check_randomized_delay: "30min"  # RandomizedDelaySec: spread checks so nodes don't all run at once after boot
 
 # --- OpenSCAP compliance scanning ---
 audit_openscap: true
@@ -18,6 +19,7 @@ audit_openscap: true
 audit_openscap_profile: "xccdf_org.ssgproject.content_profile_anssi_bp28_high"
 audit_openscap_datastream: "/usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml"
 audit_openscap_oncalendar: "Sun *-*-* 03:00:00"
+audit_openscap_randomized_delay: "1h"  # RandomizedDelaySec: spread scans so nodes don't all run at once after boot
 audit_openscap_report_dir: "/var/log/oscap"
 audit_openscap_run_now: false  # don't run a (slow) scan during the playbook by default
 
