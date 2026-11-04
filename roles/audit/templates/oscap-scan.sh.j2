@@ -9,6 +9,9 @@ RESULTS="${REPORT_DIR}/oscap-results-${TS}.xml"
 PROFILE="{{ audit_openscap_profile }}"
 DS="{{ audit_openscap_datastream }}"
 
+# Remove any same-minute leftover so an existing $RESULTS can only come from this run.
+rm -f -- "$RESULTS"
+
 # Run the scan. oscap returns 2 when some rules fail — that's normal, not an error.
 oscap xccdf eval \
   --profile "$PROFILE" \
@@ -18,14 +21,24 @@ oscap xccdf eval \
 RC=$?
 echo "OpenSCAP report: $REPORT (rc=$RC)"
 
+# 0 = all pass, 2 = some rules failed (normal); anything else is a scan error.
+case "$RC" in
+    0|2) SCAN_OK=1 ;;
+    *)   SCAN_OK=0; echo "ERROR: oscap failed (rc=$RC); compliance metric not updated" >&2 ;;
+esac
+
 {% if audit_openscap_metrics %}
 # --- Emit a Prometheus compliance metric from the XML results ---
+# Only from a good scan: on error the old metric stays and its timestamp goes stale.
 TEXTFILE_DIR="{{ audit_openscap_textfile_dir }}"
 PROM="${TEXTFILE_DIR}/compliance.prom"
-if [ -d "$TEXTFILE_DIR" ] && [ -f "$RESULTS" ]; then
+if [ "$SCAN_OK" -eq 1 ] && [ -d "$TEXTFILE_DIR" ] && [ -s "$RESULTS" ]; then
     # Count rule-results by outcome from the ARF/XCCDF results XML.
-    PASS=$(grep -c '<result>pass</result>' "$RESULTS" 2>/dev/null || echo 0)
-    FAIL=$(grep -c '<result>fail</result>' "$RESULTS" 2>/dev/null || echo 0)
+    # grep -c prints 0 AND exits 1 on no match: '|| true' keeps the single 0.
+    PASS=$(grep -c '<result>pass</result>' "$RESULTS" 2>/dev/null || true)
+    FAIL=$(grep -c '<result>fail</result>' "$RESULTS" 2>/dev/null || true)
+    PASS=${PASS:-0}
+    FAIL=${FAIL:-0}
     # scored = pass + fail (ignore notapplicable/notchecked/informational)
     SCORED=$(( PASS + FAIL ))
     if [ "$SCORED" -gt 0 ]; then
@@ -59,4 +72,6 @@ KEEP="{{ audit_openscap_keep_reports }}"
 ls -1t "${REPORT_DIR}"/oscap-*.html 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f
 ls -1t "${REPORT_DIR}"/oscap-results-*.xml 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f
 
+# Fail the unit on a scan error so systemctl --failed / alerting sees it.
+[ "$SCAN_OK" -eq 1 ] || exit 1
 exit 0
