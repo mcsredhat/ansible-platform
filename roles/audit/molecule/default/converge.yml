@@ -4,3 +4,13 @@
   become: true
   roles:
     - audit
+
+# Same entry point as aide_baseline.yml; skips in the container (audit_aide_init: false).
+- name: Converge AIDE baseline entry point
+  hosts: all
+  become: true
+  tasks:
+    - name: Build or refresh the AIDE baseline
+      ansible.builtin.import_role:
+        name: audit
+        tasks_from: aide_baseline

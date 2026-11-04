@@ -10,3 +10,38 @@
     - name: AIDE check timer unit present
       ansible.builtin.command: test -f /etc/systemd/system/aide-check.timer
       changed_when: false
+
+    - name: Read the audit rules
+      ansible.builtin.slurp:
+        src: /etc/audit/rules.d/99-platform.rules
+      register: verify_rules
+
+    - name: Every syscall rule has a b32 twin (no 32-bit bypass)
+      ansible.builtin.assert:
+        that:
+          - verify_b64 | length > 0
+          - verify_b64 | length == verify_b32 | length
+          - verify_b32 | select('search', 'stime') | list | length == 1
+          - verify_b64 | select('search', 'stime') | list | length == 0
+        fail_msg: "b64={{ verify_b64 | length }} b32={{ verify_b32 | length }} syscall rules"
+      vars:
+        verify_lines: "{{ (verify_rules.content | b64decode).splitlines() }}"
+        verify_b64: "{{ verify_lines | select('match', '^-a .*-F arch=b64 -S ') | list }}"
+        verify_b32: "{{ verify_lines | select('match', '^-a .*-F arch=b32 -S ') | list }}"
+
+    - name: Read the AIDE check units
+      ansible.builtin.slurp:
+        src: "/etc/systemd/system/{{ item }}"
+      loop: [aide-check.timer, aide-check.service]
+      register: verify_units
+
+    - name: AIDE timer is jittered and the service runs at idle priority
+      ansible.builtin.assert:
+        that:
+          - "'RandomizedDelaySec=' in verify_timer"
+          - "'Persistent=true' in verify_timer"
+          - "'Nice=19' in verify_service"
+          - "'IOSchedulingClass=idle' in verify_service"
+      vars:
+        verify_timer: "{{ verify_units.results[0].content | b64decode }}"
+        verify_service: "{{ verify_units.results[1].content | b64decode }}"
